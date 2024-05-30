@@ -99,20 +99,25 @@ class AdminWindow(QWidget):
     def init_ui(self):
         self.setWindowTitle("Администратор")
         self.setFixedSize(800, 600)
-        self.setStyleSheet("background-color: white;")
+        self.setAutoFillBackground(True)
+        p = self.palette()
+        p.setBrush(self.backgroundRole(), QBrush(QPixmap("C:/SIZ_detection/pre_ui/adminback.png")))
+        self.setPalette(p)
+        self.setStyleSheet("border-radius: 10px;")
         layout = QVBoxLayout()
 
+
         self.table = QTableWidget()
-        self.table.setColumnCount(2)  # Две колонки: логин и пароль
+        self.table.setColumnCount(2)
         self.table.setHorizontalHeaderLabels(["Логин", "Пароль"])
         self.load_data()
 
         self.add_button = QPushButton('Добавить сотрудника')
         self.delete_button = QPushButton('Удалить сотрудника')
         self.back_button = QPushButton('Назад к авторизации')
-        self.add_button.setStyleSheet("background-color: #d6001c; color: white; font-size: 16px; padding: 10px;")
-        self.delete_button.setStyleSheet("background-color: #003399; color: white; font-size: 16px; padding: 10px;")
-        self.back_button.setStyleSheet("background-color: #009933; color: white; font-size: 16px; padding: 10px;")
+        self.add_button.setStyleSheet("background-color: #d6001c; color: white; font-size: 16px; padding: 10px; border-radius: 5px;")
+        self.delete_button.setStyleSheet("background-color: #003399; color: white; font-size: 16px; padding: 10px; border-radius: 5px;")
+        self.back_button.setStyleSheet("background-color: #666; color: white; font-size: 16px; padding: 10px; border-radius: 5px;")
 
         layout.addWidget(self.table)
         layout.addWidget(self.add_button)
