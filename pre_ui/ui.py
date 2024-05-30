@@ -17,7 +17,9 @@ class MenuWidget(QWidget):
         self.setFixedSize(500, 500)
         
         login_input = QLineEdit()
+        login_input.setPlaceholderText("Логин")
         password_input = QLineEdit()
+        password_input.setPlaceholderText("Пароль")
         auth_button = QPushButton('Авторизация')
         
         login_input.setStyleSheet("font-size: 20px;")
@@ -43,6 +45,8 @@ class MenuWidget(QWidget):
         self.setLayout(layout)
         
         auth_button.clicked.connect(lambda: self.authenticate(login_input.text(), password_input.text()))
+        login_input.returnPressed.connect(lambda: self.authenticate(login_input.text(), password_input.text()))
+        password_input.returnPressed.connect(lambda: self.authenticate(login_input.text(), password_input.text()))
 
     def init_db(self):
         self.conn = sqlite3.connect('users.db')
@@ -57,14 +61,18 @@ class MenuWidget(QWidget):
         self.conn.commit()
 
     def authenticate(self, login, password):
-        if login == "admin" and password == "admin":
-            self.close()  # Закрыть текущее окно авторизации
-            self.admin_window = AdminWindow(self.conn)
-            self.admin_window.show()
-        elif login == "user" and password == "password":
-            QMessageBox.information(self, "Авторизация", "Вы вошли как сотрудник")
+        self.cursor.execute("SELECT * FROM users WHERE username=? AND password=?", (login, password))
+        result = self.cursor.fetchone()
+        if result:
+            if login == "admin":
+                self.close()  # Закрыть текущее окно авторизации
+                self.admin_window = AdminWindow(self.conn)
+                self.admin_window.show()
+            else:
+                QMessageBox.information(self, "Авторизация", "Вы вошли как сотрудник")
         else:
             QMessageBox.warning(self, "Авторизация", "Неверный логин или пароль")
+ 
  
     # Предполагается, что остальные части класса уже реализованы
 
@@ -90,7 +98,7 @@ class AdminWindow(QWidget):
 
     def init_ui(self):
         self.setWindowTitle("Администратор")
-        self.setGeometry(100, 100, 600, 400)
+        self.setFixedSize(800, 600)
         self.setStyleSheet("background-color: white;")
         layout = QVBoxLayout()
 
@@ -101,17 +109,27 @@ class AdminWindow(QWidget):
 
         self.add_button = QPushButton('Добавить сотрудника')
         self.delete_button = QPushButton('Удалить сотрудника')
+        self.back_button = QPushButton('Назад к авторизации')
         self.add_button.setStyleSheet("background-color: #d6001c; color: white; font-size: 16px; padding: 10px;")
         self.delete_button.setStyleSheet("background-color: #003399; color: white; font-size: 16px; padding: 10px;")
+        self.back_button.setStyleSheet("background-color: #009933; color: white; font-size: 16px; padding: 10px;")
 
         layout.addWidget(self.table)
         layout.addWidget(self.add_button)
         layout.addWidget(self.delete_button)
+        layout.addWidget(self.back_button)
 
         self.setLayout(layout)
 
         self.add_button.clicked.connect(self.add_user)
         self.delete_button.clicked.connect(self.delete_user)
+        self.back_button.clicked.connect(self.back_to_login)
+
+    def back_to_login(self):
+        self.close()
+        self.auth_window = MenuWidget()
+        self.auth_window.show()
+
 
     def load_data(self):
         cursor = self.db_connection.cursor()
