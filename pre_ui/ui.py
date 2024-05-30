@@ -2,7 +2,7 @@ import sys
 import os
 from PyQt5.QtCore import Qt, QTimer, QSize
 from PyQt5.QtGui import QImage, QPixmap, QPalette, QBrush
-from PyQt5.QtWidgets import QApplication, QWidget, QLabel, QVBoxLayout, QHBoxLayout, QSlider, QPushButton, QSizePolicy, QLineEdit
+from PyQt5.QtWidgets import QApplication, QWidget, QLabel, QVBoxLayout, QHBoxLayout, QSlider, QPushButton, QSizePolicy, QLineEdit, QMessageBox
 
 class MenuWidget(QWidget):
     def __init__(self):
@@ -44,8 +44,12 @@ class MenuWidget(QWidget):
         auth_button.clicked.connect(lambda: self.authenticate(login_input.text(), password_input.text()))
         
     def authenticate(self, login, password):
-        print("Логин:", login)
-        print("Пароль:", password)
+        if login == "admin" and password == "admin":
+            QMessageBox.information(self, "Авторизация", "Вы вошли как администратор")
+        elif login == "user" and password == "password":
+            QMessageBox.information(self, "Авторизация", "Вы вошли как сотрудник")
+        else:
+            QMessageBox.warning(self, "Авторизация", "Неверный логин или пароль")
 
 
 if __name__ == '__main__':
