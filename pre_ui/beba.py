@@ -1,7 +1,7 @@
 import cv2
 import numpy as np
 
-def estimatespeed(points0, points1, dt=1.0, scale=1.0):
+def estimate_speed(points0, points1, dt=1.0, scale=1.0):
     # Расчет скорости как среднее перемещение между кадрами
     distances = np.linalg.norm(points1 - points0, axis=1)
     avgspeed = np.mean(distances) / dt * scale

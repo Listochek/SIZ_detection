@@ -1,12 +1,13 @@
 import sys
 import os
+import cv2
 import shutil
 import typing
 from PyQt5.QtCore import Qt, QSize, QUrl
-from PyQt5.QtGui import QImage, QPixmap, QPalette, QBrush
+from PyQt5.QtGui import QImage, QPixmap, QPalette, QBrush, QIcon
 from PyQt5.QtMultimedia import QMediaPlayer, QMediaContent
 from PyQt5.QtMultimediaWidgets import QVideoWidget
-from PyQt5.QtWidgets import QScrollArea, QFrame, QFileDialog, QApplication, QWidget, QLabel, QVBoxLayout, QHBoxLayout, QSlider, QPushButton, QSizePolicy, QLineEdit, QMessageBox, QTableWidget, QTableWidgetItem, QInputDialog
+from PyQt5.QtWidgets import QToolButton, QFormLayout, QGroupBox, QScrollArea, QFrame, QFileDialog, QApplication, QWidget, QLabel, QVBoxLayout, QHBoxLayout, QSlider, QPushButton, QSizePolicy, QLineEdit, QMessageBox, QTableWidget, QTableWidgetItem, QInputDialog, QSplitter
 import sqlite3
 
 class MenuWidget(QWidget):
@@ -168,14 +169,19 @@ class AdminWindow(QWidget):
         if okPressed and username != '':
             password, okPressed = QInputDialog.getText(self, "Добавить сотрудника","Пароль:")
             if okPressed and password != '':
-                try:
-                    cursor = self.db_connection.cursor()
-                    cursor.execute('INSERT INTO users (username, password) VALUES (?, ?)', (username, password))
-                    self.db_connection.commit()
-                    self.load_data()
-                    QMessageBox.information(self, "Успех", "Пользоатель успешно добавлен")
-                except Exception as e:
-                    QMessageBox.warning(self, "Ошибка", f"Не удалось добавить пользователя: {str(e)}")
+                name, okPressed = QInputDialog.getText(self, "Добавить сотрудника","Имя:")
+                if okPressed and password != '':
+                    surname, okPressed = QInputDialog.getText(self, "Добавить сотрудника","Фамилия:")
+                    if okPressed and password != '':
+                        tier, okPressed = QInputDialog.getText(self, "Добавить сотрудника","Уровень [1 - сотрудник | 2 - проверяющй]:")
+                        try:
+                            cursor = self.db_connection.cursor()
+                            cursor.execute('INSERT INTO users (username, password, name, surname, tier) VALUES (?, ?, ?, ?, ?, ?)', (username, password, name, surname, tier))
+                            self.db_connection.commit()
+                            self.load_data()
+                            QMessageBox.information(self, "Успех", "Пользоатель успешно добавлен")
+                        except Exception as e:
+                            QMessageBox.warning(self, "Ошибка", f"Не удалось доавить пользователя: {str(e)}")
 
     def delete_user(self):
         selected_items = self.table.selectedItems()
@@ -188,7 +194,7 @@ class AdminWindow(QWidget):
                 self.load_data() 
                 QMessageBox.information(self, "Успех", "Пользователь успешно удален")
             except Exception as e:
-                QMessageBox.warning(self, "Ошибка", f"Не удалось удалить пользователя: {str(e)}")
+                QMessageBox.warning(self, "Ошибка", f"Не удалось удалит пользователя: {str(e)}")
         else:
             QMessageBox.warning(self, "Ошибка", "Пожалуйста, выберите пользователя для удаления")
 
@@ -282,6 +288,8 @@ class WatcherWindow(QWidget):
         self.init_ui()
 
     def init_ui(self):
+        video_files = [f for f in os.listdir(os.path.dirname(os.path.abspath(__file__))) if f.endswith('.mp4') or f.endswith('.avi')]
+
         self.setWindowTitle("Смотрящий")
         self.setFixedSize(1800, 1000)
         self.setAutoFillBackground(True)
@@ -289,31 +297,93 @@ class WatcherWindow(QWidget):
         p.setBrush(self.backgroundRole(), QBrush(QPixmap("C:/SIZ_detection/pre_ui/userback.png")))
         self.setPalette(p)
         self.setStyleSheet("border-radius: 10px;")
-        
-        self.scroll = QScrollArea()
-        layout = QHBoxLayout()
 
         self.video_widget = QVideoWidget()
-        self.scroll_layout = QVBoxLayout()
         self.player = QMediaPlayer()
         self.player.setVideoOutput(self.video_widget)
 
-        video_files = [f for f in os.listdir(os.path.dirname(os.path.abspath(__file__))) if f.endswith('.mp4') or f.endswith('.avi')]
+        self.slider = QSlider(Qt.Horizontal)
+        self.slider.setRange(0, 0)
+        self.slider.sliderMoved.connect(self.set_position)
+        self.slider.setSingleStep(1)  # Set the step size to 1 for smoother movement
+
+        self.player.positionChanged.connect(self.position_changed)
+        self.player.durationChanged.connect(self.duration_changed)
+
+        self.scroll_area = QScrollArea()
+        self.scroll_area.setWidgetResizable(True)
+        video_list_widget = QWidget()
+        video_list_layout = QVBoxLayout()
+        video_list_widget.setLayout(video_list_layout)
 
         for video_file in video_files:
             video_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), video_file)
-            video_preview = QLabel()
-            video_preview.setPixmap(QPixmap(video_path).scaledToWidth(200))
-            video_name = QLabel(video_file)
+            video_button = QToolButton()
+            video_button.setIcon(self.get_video_thumbnail(video_path))
+            video_button.setIconSize(QSize(200, 150))
+            video_button.setText(video_file)
+            video_button.setToolButtonStyle(Qt.ToolButtonTextUnderIcon)
+            video_button.setStyleSheet("QToolButton { text-align: center; }")
+            video_button.clicked.connect(lambda checked, path=video_path: self.play_video(path))
+            video_list_layout.addWidget(video_button)
 
-        layout.addWidget(self.video_widget)
-        self.video_widget.setStyleSheet("background-color: #d6001c; color: white; border-radius: 5px;")
+        self.scroll_area.setWidget(video_list_widget)
+
+        splitter = QSplitter(Qt.Horizontal)
+        splitter.addWidget(self.video_widget)
+        splitter.addWidget(self.scroll_area)
+        splitter.setSizes([1550, 250])
+
+        self.pause_button = QPushButton('Пауза')
+        self.pause_button.setStyleSheet("background-color: #c91616; color: white; font-size: 16px; padding: 10px; border-radius: 5px;")
+        self.pause_button.clicked.connect(self.toggle_pause)
+
+        layout = QVBoxLayout()
+        layout.addWidget(splitter)
+        layout.addWidget(self.slider)
+        layout.addWidget(self.pause_button)
 
         self.setLayout(layout)
-        
+
+    def play_video(self, video_path):
+        self.player.setMedia(QMediaContent(QUrl.fromLocalFile(video_path)))
+        self.player.play()
+
+    def get_video_thumbnail(self, video_path):
+        cap = cv2.VideoCapture(video_path)
+        ret, frame = cap.read()
+        cap.release()
+        if ret:
+            height, width, channel = frame.shape
+            bytes_per_line = 3 * width
+            q_img = QImage(frame.data, width, height, bytes_per_line, QImage.Format_RGB888).rgbSwapped()
+            return QIcon(QPixmap.fromImage(q_img))
+        return QIcon()
+
+    def position_changed(self, position):
+        self.slider.setValue(position)
+
+    def duration_changed(self, duration):
+        self.slider.setRange(0, duration)
+
+    def set_position(self, position):
+        self.player.setPosition(position)
+    
+    def toggle_pause(self):
+        if self.player.state() == QMediaPlayer.PlayingState:
+            self.player.pause()
+            self.pause_button.setText('Воспроизвести')
+            self.pause_button.setStyleSheet("background-color: green; font-size: 16px; padding: 10px; border-radius: 5px;")
+        else:
+            self.player.play()
+            self.pause_button.setText('Пауза')
+            self.pause_button.setStyleSheet("background-color: #c91616; color: white; font-size: 16px; padding: 10px; border-radius: 5px;")
+
 if __name__ == '__main__':
     print("SIZ>> __main__ запущен!")
     app = QApplication(sys.argv)
     window = MenuWidget()
     window.show()   
+    sys.exit(app.exec_())
+    sys.exit(app.exec_())
     sys.exit(app.exec_())
