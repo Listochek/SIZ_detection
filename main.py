@@ -397,7 +397,7 @@ class WatcherWindow(QWidget):
             self.toggle_pause()
         super().keyPressEvent(event)
 
-if __name__ == '__main__':
+if __name__ == '__main__': 
     print("SIZ>> __main__ запущен!")
     app = QApplication(sys.argv)
     window = MenuWidget()
