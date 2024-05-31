@@ -22,7 +22,7 @@ def main(videopath):
 
     # Находим углы в первом кадре
     old_gray = cv2.cvtColor(old_frame, cv2.COLOR_BGR2GRAY)
-    p0 = cv2.goodFeaturesToTrack(old_gray, mask=None, feature_params)
+    p0 = cv2.goodFeaturesToTrack(old_gray, **feature_params)
 
     while True:
         ret, frame = cap.read()
@@ -39,7 +39,7 @@ def main(videopath):
         good_old = p0[st == 1]
 
         # Оцениваем скорость
-        speed = estimate_speed(good_old, good_new)
+        speed = estimatespeed(good_old, good_new)
         print(f"Оценочная скорость: {speed} пикселей/кадр")
 
         # Обновляем предыдущий кадр и предыдущие точки
@@ -50,4 +50,5 @@ def main(videopath):
 
 if __name__ == "__main__":
     video_path = 'C:\Users\kames\OneDrive\Рабочий стол\поезд\0000000_00000020240221082923_0001_IMP (1)'
+    main(video_path)
     main(video_path)
