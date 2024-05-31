@@ -8,7 +8,7 @@ def estimate_speed(points0, points1, dt=1.0, scale=1.0):
     return avgspeed
 
 def main(videopath):
-    cap = cv2.VideoCapture(video_path)
+    cap = cv2.VideoCapture(videopath)
     ret, old_frame = cap.read()
     if not ret:
         print("Не удалось загрузить видео")
@@ -22,9 +22,14 @@ def main(videopath):
 
     # Находим углы в первом кадре
     old_gray = cv2.cvtColor(old_frame, cv2.COLOR_BGR2GRAY)
-    p0 = cv2.goodFeaturesToTrack(old_gray, mask=None, feature_params)
+    p0 = cv2.goodFeaturesToTrack(old_gray, mask=None, **feature_params)
 
+    if p0 is None:
+        print("Не найдено достаточно точек для отслеживания.")
+        return
+    count = 1
     while True:
+        
         ret, frame = cap.read()
         if not ret:
             break
@@ -32,22 +37,28 @@ def main(videopath):
         frame_gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
 
         # Рассчитываем оптический поток
-        p1, st, err = cv2.calcOpticalFlowPyrLK(old_gray, frame_gray, p0, None, lk_params)
+        p1, st, err = cv2.calcOpticalFlowPyrLK(old_gray, frame_gray, p0, None, **lk_params)
+            
 
-        # Выбираем хорошие точки
-        good_new = p1[st == 1]
-        good_old = p0[st == 1]
+        if p1 is not None and st is not None:
+            # Выбираем хорошие точки
+            good_new = p1[st == 1]
+            good_old = p0[st == 1]
+            print(count)
+            # Оцениваем скорость
+            speed = estimate_speed(good_old, good_new)
+            print(f"Оценочная скорость: {speed} пикселей/кадр")
+            print(count) # счетчик
+            count += 1
+            # Обновляем предыдущий кадр и предыдущие точки
+            old_gray = frame_gray.copy()
+            p0 = good_new.reshape(-1, 1, 2)
 
-        # Оцениваем скорость
-        speed = estimate_speed(good_old, good_new)
-        print(f"Оценочная скорость: {speed} пикселей/кадр")
-
-        # Обновляем предыдущий кадр и предыдущие точки
-        old_gray = frame_gray.copy()
-        p0 = good_new.reshape(-1, 1, 2)
-
+        else:
+            print("Не удалось рассчитать оптический поток для текущего кадра.")
+            
     cap.release()
 
 if __name__ == "__main__":
-    video_path = 'C:\Users\kames\OneDrive\Рабочий стол\поезд\0000000_00000020240221082923_0001_IMP (1)'
+    video_path = 'C:/Users/Admin/Desktop/train_dataset_rzhd_fix_train/train/VID-20240301-WA0023.mp4'
     main(video_path)
