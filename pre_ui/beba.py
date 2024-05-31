@@ -45,5 +45,5 @@ def main(videopath):
     cap.release()
 
 if __name__ == "__main__":
-    video_path = 'C:\Users\kames\OneDrive\Рабочий стол\поезд\0000000_00000020240221082923_0001_IMP (1)'
+    video_path = 'C:\\Users\\kames\\OneDrive\\Рабочий стол\\поезд\\VID_20240304_095227.mp4'
     main(video_path)
