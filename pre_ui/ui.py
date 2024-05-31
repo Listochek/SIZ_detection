@@ -64,7 +64,7 @@ class MenuWidget(QWidget):
             )
         ''')
         self.conn.commit()
-
+#123
     def authenticate(self, login, password):
         self.cursor.execute("SELECT * FROM users WHERE username=? AND password=?", (login, password))
         result = self.cursor.fetchone()
