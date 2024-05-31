@@ -126,6 +126,7 @@ class AdminWindow(QWidget):
         self.table = QTableWidget()
         self.table.setColumnCount(5)
         self.table.setHorizontalHeaderLabels(["Логин", "Пароль", "Имя", "Фамилия", "Тир"])
+        self.table.setStyleSheet("background: rgba(255, 255, 255, 0.5);")
         self.load_data()
 
         self.add_button = QPushButton('Добавить сотрудника')
@@ -212,7 +213,7 @@ class UserWindow(QWidget):
         p = self.palette()
         p.setBrush(self.backgroundRole(), QBrush(QPixmap("assets/userback.png")))
         self.setPalette(p)
-        self.setStyleSheet("border-radius: 10px;")
+        self.setStyleSheet("background: rgba(255, 255, 255, 0.5); border-radius: 10px;")
         layout = QVBoxLayout()
         self.video_widget = QVideoWidget()
         self.player = QMediaPlayer()
