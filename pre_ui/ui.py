@@ -37,7 +37,7 @@ class MenuWidget(QWidget):
         layout.addStretch(1)
         layout.setAlignment(Qt.AlignCenter)
         layout.setAlignment(auth_button, Qt.AlignCenter)
-        image = QImage("C:/SIZ_detection/pre_ui/authback.png").scaled(QSize(500, 500))
+        image = QImage("pre_ui/authback.jpg").scaled(QSize(500, 500))
         palette = QPalette()
         palette.setBrush(QPalette.Window, QBrush(image))                        
         self.setPalette(palette)
