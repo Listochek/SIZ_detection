@@ -41,7 +41,7 @@ class MenuWidget(QWidget):
         layout.addStretch(1)
         layout.setAlignment(Qt.AlignCenter)
         layout.setAlignment(auth_button, Qt.AlignCenter)
-        image = QImage("pre_ui/authback.png").scaled(QSize(500, 500))
+        image = QImage("assets/authback.png").scaled(QSize(500, 500))
         palette = QPalette()
         palette.setBrush(QPalette.Window, QBrush(image))                        
         self.setPalette(palette)
@@ -117,7 +117,7 @@ class AdminWindow(QWidget):
         self.setFixedSize(800, 600)
         self.setAutoFillBackground(True)
         p = self.palette()
-        p.setBrush(self.backgroundRole(), QBrush(QPixmap("C:/SIZ_detection/pre_ui/adminback.png")))
+        p.setBrush(self.backgroundRole(), QBrush(QPixmap("assets/adminback.png")))
         self.setPalette(p)
         self.setStyleSheet("border-radius: 10px;")
         layout = QVBoxLayout()
@@ -176,7 +176,7 @@ class AdminWindow(QWidget):
                         tier, okPressed = QInputDialog.getText(self, "Добавить сотрудника","Уровень [1 - сотрудник | 2 - проверяющй]:")
                         try:
                             cursor = self.db_connection.cursor()
-                            cursor.execute('INSERT INTO users (username, password, name, surname, tier) VALUES (?, ?, ?, ?, ?, ?)', (username, password, name, surname, tier))
+                            cursor.execute('INSERT INTO users (username, password, name, surname, tier) VALUES (?, ?, ?, ?, ?)', (username, password, name, surname, tier))
                             self.db_connection.commit()
                             self.load_data()
                             QMessageBox.information(self, "Успех", "Пользоатель успешно добавлен")
@@ -210,7 +210,7 @@ class UserWindow(QWidget):
         self.setFixedSize(1800, 1000)
         self.setAutoFillBackground(True)
         p = self.palette()
-        p.setBrush(self.backgroundRole(), QBrush(QPixmap("C:/SIZ_detection/pre_ui/userback.png")))
+        p.setBrush(self.backgroundRole(), QBrush(QPixmap("assets/userback.png")))
         self.setPalette(p)
         self.setStyleSheet("border-radius: 10px;")
         layout = QVBoxLayout()
@@ -224,19 +224,23 @@ class UserWindow(QWidget):
         self.confirm_button.setVisible(False)
         self.delete_button = QPushButton('Удалить')
         self.delete_button.setVisible(False)
+        self.back_button = QPushButton('Назад к авторизации')
 
         self.add_button.setStyleSheet("background-color: #d6001c; color: white; font-size: 16px; padding: 10px; border-radius: 5px; width: 200px;")
         self.confirm_button.setStyleSheet("background-color: #003399; color: white; font-size: 16px; padding: 10px; border-radius: 5px;")
         self.delete_button.setStyleSheet("background-color: #666; color: white; font-size: 16px; padding: 10px; border-radius: 5px;")
+        self.back_button.setStyleSheet("background-color: #666; color: white; font-size: 16px; padding: 10px; border-radius: 5px;")
 
         layout.addWidget(self.video_widget)
         layout.addWidget(self.add_button)
         layout.addWidget(self.confirm_button)
         layout.addWidget(self.delete_button)
+        layout.addWidget(self.back_button)
 
         self.add_button.clicked.connect(self.add_video)
         self.confirm_button.clicked.connect(self.confirm_video)
         self.delete_button.clicked.connect(self.delete_video)
+        self.back_button.clicked.connect(self.back_to_login)
 
         layout.setAlignment(self.add_button, Qt.AlignCenter)
 
@@ -259,9 +263,11 @@ class UserWindow(QWidget):
 
     def confirm_video(self):
         if hasattr(self, 'video_path'):
-            video_count = len(os.listdir(os.path.dirname(os.path.abspath(__file__))))
+            video_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'videos')
+            os.makedirs(video_dir, exist_ok=True)
+            video_count = len(os.listdir(video_dir))
             new_file_name = f"vid{video_count + 1}.mp4"
-            destination_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), new_file_name)
+            destination_path = os.path.join(video_dir, new_file_name)
             shutil.copyfile(self.video_path, destination_path)
         self.player.setMedia(QMediaContent())
         self.player.stop()
@@ -279,6 +285,11 @@ class UserWindow(QWidget):
         self.delete_button.setVisible(False)
         self.add_button.setVisible(True)
         QMessageBox.warning(self, "Удаление", "Видео удалено")
+        
+    def back_to_login(self):
+        self.close()
+        self.auth_window = MenuWidget()
+        self.auth_window.show()
 
 class WatcherWindow(QWidget):
     def __init__(self, db_connection, username, parent=None):
@@ -288,24 +299,26 @@ class WatcherWindow(QWidget):
         self.init_ui()
 
     def init_ui(self):
-        video_files = [f for f in os.listdir(os.path.dirname(os.path.abspath(__file__))) if f.endswith('.mp4') or f.endswith('.avi')]
+        video_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'videos')
+        video_files = [f for f in os.listdir(video_dir) if f.endswith('.mp4') or f.endswith('.avi')]
 
         self.setWindowTitle("Смотрящий")
         self.setFixedSize(1800, 1000)
         self.setAutoFillBackground(True)
         p = self.palette()
-        p.setBrush(self.backgroundRole(), QBrush(QPixmap("C:/SIZ_detection/pre_ui/userback.png")))
+        p.setBrush(self.backgroundRole(), QBrush(QPixmap("assets/userback.png")))
         self.setPalette(p)
         self.setStyleSheet("border-radius: 10px;")
 
         self.video_widget = QVideoWidget()
         self.player = QMediaPlayer()
         self.player.setVideoOutput(self.video_widget)
+        self.player.setMuted(True)
 
         self.slider = QSlider(Qt.Horizontal)
         self.slider.setRange(0, 0)
         self.slider.sliderMoved.connect(self.set_position)
-        self.slider.setSingleStep(1)  # Set the step size to 1 for smoother movement
+        self.slider.setSingleStep(1)
 
         self.player.positionChanged.connect(self.position_changed)
         self.player.durationChanged.connect(self.duration_changed)
@@ -317,7 +330,7 @@ class WatcherWindow(QWidget):
         video_list_widget.setLayout(video_list_layout)
 
         for video_file in video_files:
-            video_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), video_file)
+            video_path = os.path.join(video_dir, video_file)
             video_button = QToolButton()
             video_button.setIcon(self.get_video_thumbnail(video_path))
             video_button.setIconSize(QSize(200, 150))
@@ -335,7 +348,7 @@ class WatcherWindow(QWidget):
         splitter.setSizes([1550, 250])
 
         self.pause_button = QPushButton('Пауза')
-        self.pause_button.setStyleSheet("background-color: #c91616; color: white; font-size: 16px; padding: 10px; border-radius: 5px;")
+        self.pause_button.setStyleSheet("background-color: #666; color: white; font-size: 16px; padding: 10px; border-radius: 5px;")
         self.pause_button.clicked.connect(self.toggle_pause)
 
         layout = QVBoxLayout()
@@ -368,22 +381,25 @@ class WatcherWindow(QWidget):
 
     def set_position(self, position):
         self.player.setPosition(position)
-    
+
     def toggle_pause(self):
         if self.player.state() == QMediaPlayer.PlayingState:
             self.player.pause()
             self.pause_button.setText('Воспроизвести')
-            self.pause_button.setStyleSheet("background-color: green; font-size: 16px; padding: 10px; border-radius: 5px;")
+            self.pause_button.setStyleSheet("background-color: green; color: white; font-size: 16px; padding: 10px; border-radius: 5px;")
         else:
             self.player.play()
             self.pause_button.setText('Пауза')
             self.pause_button.setStyleSheet("background-color: #c91616; color: white; font-size: 16px; padding: 10px; border-radius: 5px;")
+
+    def keyPressEvent(self, event):
+        if event.key() == Qt.Key_Space:
+            self.toggle_pause()
+        super().keyPressEvent(event)
 
 if __name__ == '__main__':
     print("SIZ>> __main__ запущен!")
     app = QApplication(sys.argv)
     window = MenuWidget()
     window.show()   
-    sys.exit(app.exec_())
-    sys.exit(app.exec_())
     sys.exit(app.exec_())
