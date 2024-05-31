@@ -7,6 +7,7 @@ from PyQt5.QtWidgets import QApplication, QWidget, QLabel, QVBoxLayout, QHBoxLay
 import sqlite3
 
 #sjnfj
+#12312321 dfsafqa fdsfsdf
 class MenuWidget(QWidget):
     def __init__(self):
         super().__init__()
