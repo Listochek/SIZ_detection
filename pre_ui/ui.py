@@ -1,9 +1,11 @@
 import sys
 import os
+import shutil
 from PyQt5.QtCore import Qt, QTimer, QSize, QUrl
 from PyQt5.QtGui import QImage, QPixmap, QPalette, QBrush
 from PyQt5.QtMultimedia import QMediaPlayer, QMediaContent
-from PyQt5.QtWidgets import QApplication, QWidget, QLabel, QVBoxLayout, QHBoxLayout, QSlider, QPushButton, QSizePolicy, QLineEdit, QMessageBox, QTableWidget, QTableWidgetItem, QInputDialog
+from PyQt5.QtMultimediaWidgets import QVideoWidget
+from PyQt5.QtWidgets import QFileDialog, QApplication, QWidget, QLabel, QVBoxLayout, QHBoxLayout, QSlider, QPushButton, QSizePolicy, QLineEdit, QMessageBox, QTableWidget, QTableWidgetItem, QInputDialog
 import sqlite3
 
 class MenuWidget(QWidget):
@@ -37,7 +39,7 @@ class MenuWidget(QWidget):
         layout.addStretch(1)
         layout.setAlignment(Qt.AlignCenter)
         layout.setAlignment(auth_button, Qt.AlignCenter)
-        image = QImage("pre_ui/authback.jpg").scaled(QSize(500, 500))
+        image = QImage("pre_ui/authback.png").scaled(QSize(500, 500))
         palette = QPalette()
         palette.setBrush(QPalette.Window, QBrush(image))                        
         self.setPalette(palette)
@@ -73,7 +75,6 @@ class MenuWidget(QWidget):
                 self.admin_window.show()
                 QMessageBox.information(self, "Авторизация", "Вы вошли как администратор")
             else:
-                print(result)
                 if result[5] == "1":
                     self.close()
                     self.user_window = UserWindow(self.conn, login)
@@ -83,7 +84,7 @@ class MenuWidget(QWidget):
                 else:
                     QMessageBox.information(self, "Авторизация", "Вы вошли никак")
         else:
-            QMessageBox.warning(self, "Авторизация", "Неверный логин или пароль")
+            QMessageBox.warning(self, "Авторизация", "Неверный логи�� или пароль")
  
  
     def add_user(self, username, password):
@@ -123,7 +124,7 @@ class AdminWindow(QWidget):
         self.load_data()
 
         self.add_button = QPushButton('Добавить сотрудника')
-        self.delete_button = QPushButton('Удалить сотрудника')
+        self.delete_button = QPushButton('Удалить сотрудника')  
         self.back_button = QPushButton('Назад к авторизации')
         self.add_button.setStyleSheet("background-color: #d6001c; color: white; font-size: 16px; padding: 10px; border-radius: 5px;")
         self.delete_button.setStyleSheet("background-color: #003399; color: white; font-size: 16px; padding: 10px; border-radius: 5px;")
@@ -168,7 +169,7 @@ class AdminWindow(QWidget):
                     cursor.execute('INSERT INTO users (username, password) VALUES (?, ?)', (username, password))
                     self.db_connection.commit()
                     self.load_data()
-                    QMessageBox.information(self, "Успех", "Пользователь успешно добавлен")
+                    QMessageBox.information(self, "Успех", "Пользоатель успешно добавлен")
                 except Exception as e:
                     QMessageBox.warning(self, "Ошибка", f"Не удалось добавить пользователя: {str(e)}")
 
@@ -196,27 +197,76 @@ class UserWindow(QWidget):
 
     def init_ui(self):
         self.setWindowTitle("Сотрудник")
-        self.setFixedSize(800, 600)
+        self.setFixedSize(1800, 1000)
         self.setAutoFillBackground(True)
         p = self.palette()
         p.setBrush(self.backgroundRole(), QBrush(QPixmap("C:/SIZ_detection/pre_ui/userback.png")))
         self.setPalette(p)
         self.setStyleSheet("border-radius: 10px;")
         layout = QVBoxLayout()
+        self.video_widget = QVideoWidget()
+        self.player = QMediaPlayer()
+        self.player.setVideoOutput(self.video_widget)
+        self.video_widget.setVisible(False)
+        
+        self.add_button = QPushButton('Добавить видео')
+        self.confirm_button = QPushButton('Подтвердить')
+        self.confirm_button.setVisible(False)
+        self.delete_button = QPushButton('Удалить')
+        self.delete_button.setVisible(False)
 
+        self.add_button.setStyleSheet("background-color: #d6001c; color: white; font-size: 16px; padding: 10px; border-radius: 5px; width: 200px;")
+        self.confirm_button.setStyleSheet("background-color: #003399; color: white; font-size: 16px; padding: 10px; border-radius: 5px;")
+        self.delete_button.setStyleSheet("background-color: #666; color: white; font-size: 16px; padding: 10px; border-radius: 5px;")
+
+        layout.addWidget(self.video_widget)
+        layout.addWidget(self.add_button)
+        layout.addWidget(self.confirm_button)
+        layout.addWidget(self.delete_button)
+
+        self.add_button.clicked.connect(self.add_video)
+        self.confirm_button.clicked.connect(self.confirm_video)
+        self.delete_button.clicked.connect(self.delete_video)
+
+        layout.setAlignment(self.add_button, Qt.AlignCenter)
 
         self.setLayout(layout)
 
+    def add_video(self):
+        file_dialog = QFileDialog()
+        file_dialog.setFileMode(QFileDialog.ExistingFile)
+        file_dialog.setNameFilter("Video files (*.mp4 *.avi)")
+        if file_dialog.exec_():
+            selected_files = file_dialog.selectedFiles()
+            if selected_files:
+                self.video_path = selected_files[0]
+                self.player.setMedia(QMediaContent(QUrl.fromLocalFile(self.video_path)))
+                self.player.play()
+                self.video_widget.setVisible(True)
+                self.confirm_button.setVisible(True)
+                self.delete_button.setVisible(True)
+                self.add_button.setVisible(False)
 
     def confirm_video(self):
+        if hasattr(self, 'video_path'):
+            video_count = len(os.listdir(os.path.dirname(os.path.abspath(__file__))))
+            new_file_name = f"vid{video_count + 1}.mp4"
+            destination_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), new_file_name)
+            shutil.copyfile(self.video_path, destination_path)
         QMessageBox.information(self, "Подтверждение", "Видео подтверждено")
 
     def delete_video(self):
+        self.player.setMedia(QMediaContent())
+        self.player.stop()
+        self.video_widget.setVisible(False)
+        self.confirm_button.setVisible(False)
+        self.delete_button.setVisible(False)
+        self.add_button.setVisible(True)
         QMessageBox.warning(self, "Удаление", "Видео удалено")
 
 if __name__ == '__main__':
     print("SIZ>> __main__ запущен!")
     app = QApplication(sys.argv)
     window = MenuWidget()
-    window.show()
+    window.show()   
     sys.exit(app.exec_())
