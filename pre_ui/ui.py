@@ -6,6 +6,8 @@ from PyQt5.QtMultimedia import QMediaPlayer, QMediaContent
 from PyQt5.QtWidgets import QApplication, QWidget, QLabel, QVBoxLayout, QHBoxLayout, QSlider, QPushButton, QSizePolicy, QLineEdit, QMessageBox, QTableWidget, QTableWidgetItem, QInputDialog
 import sqlite3
 
+#проверка
+
 class MenuWidget(QWidget):
     def __init__(self):
         super().__init__()
