@@ -1,11 +1,12 @@
 import sys
 import os
 import shutil
-from PyQt5.QtCore import Qt, QTimer, QSize, QUrl
+import typing
+from PyQt5.QtCore import Qt, QSize, QUrl
 from PyQt5.QtGui import QImage, QPixmap, QPalette, QBrush
 from PyQt5.QtMultimedia import QMediaPlayer, QMediaContent
 from PyQt5.QtMultimediaWidgets import QVideoWidget
-from PyQt5.QtWidgets import QFileDialog, QApplication, QWidget, QLabel, QVBoxLayout, QHBoxLayout, QSlider, QPushButton, QSizePolicy, QLineEdit, QMessageBox, QTableWidget, QTableWidgetItem, QInputDialog
+from PyQt5.QtWidgets import QScrollArea, QFrame, QFileDialog, QApplication, QWidget, QLabel, QVBoxLayout, QHBoxLayout, QSlider, QPushButton, QSizePolicy, QLineEdit, QMessageBox, QTableWidget, QTableWidgetItem, QInputDialog
 import sqlite3
 
 class MenuWidget(QWidget):
@@ -64,27 +65,30 @@ class MenuWidget(QWidget):
             )
         ''')
         self.conn.commit()
-#123
-    def authenticate(self, login, password):
+
+    def authenticate(self, login, password): #C1 ---------------------- C1
         self.cursor.execute("SELECT * FROM users WHERE username=? AND password=?", (login, password))
         result = self.cursor.fetchone()
         if result:
-            if login == "admin":
-                self.close()
-                self.admin_window = AdminWindow(self.conn)
-                self.admin_window.show()
-                QMessageBox.information(self, "Авторизация", "Вы вошли как администратор")
-            else:
-                if result[5] == "1":
+                if result[5] == "3":
+                    self.close()
+                    self.admin_window = AdminWindow(self.conn)
+                    self.admin_window.show()
+                    QMessageBox.information(self, "Авторизация", "Вы вошли как администратор")
+                elif result[5] == "1":
                     self.close()
                     self.user_window = UserWindow(self.conn, login)
                     self.user_window.show()
                     QMessageBox.information(self, "Авторизация", "Вы вошли как сотрудник")
-
+                elif result[5] == "2":
+                    self.close()
+                    self.user_window = WatcherWindow(self.conn, login)
+                    self.user_window.show()
+                    QMessageBox.information(self, "Авторизация", "Вы вошли как смотрящий")
                 else:
-                    QMessageBox.information(self, "Авторизация", "Вы вошли никак")
+                    QMessageBox.information(self, "Авторизация", "Не известная ошибка | C1") #C1 ---------------------- C1
         else:
-            QMessageBox.warning(self, "Авторизация", "Неверный логи�� или пароль")
+            QMessageBox.warning(self, "Авторизация", "Неверный логин или пароль")
  
  
     def add_user(self, username, password):
@@ -253,6 +257,12 @@ class UserWindow(QWidget):
             new_file_name = f"vid{video_count + 1}.mp4"
             destination_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), new_file_name)
             shutil.copyfile(self.video_path, destination_path)
+        self.player.setMedia(QMediaContent())
+        self.player.stop()
+        self.video_widget.setVisible(False)
+        self.confirm_button.setVisible(False)
+        self.delete_button.setVisible(False)
+        self.add_button.setVisible(True)
         QMessageBox.information(self, "Подтверждение", "Видео подтверждено")
 
     def delete_video(self):
@@ -264,6 +274,43 @@ class UserWindow(QWidget):
         self.add_button.setVisible(True)
         QMessageBox.warning(self, "Удаление", "Видео удалено")
 
+class WatcherWindow(QWidget):
+    def __init__(self, db_connection, username, parent=None):
+        super().__init__(parent)
+        self.db_connection = db_connection
+        self.username = username
+        self.init_ui()
+
+    def init_ui(self):
+        self.setWindowTitle("Смотрящий")
+        self.setFixedSize(1800, 1000)
+        self.setAutoFillBackground(True)
+        p = self.palette()
+        p.setBrush(self.backgroundRole(), QBrush(QPixmap("C:/SIZ_detection/pre_ui/userback.png")))
+        self.setPalette(p)
+        self.setStyleSheet("border-radius: 10px;")
+        
+        self.scroll = QScrollArea()
+        layout = QHBoxLayout()
+
+        self.video_widget = QVideoWidget()
+        self.scroll_layout = QVBoxLayout()
+        self.player = QMediaPlayer()
+        self.player.setVideoOutput(self.video_widget)
+
+        video_files = [f for f in os.listdir(os.path.dirname(os.path.abspath(__file__))) if f.endswith('.mp4') or f.endswith('.avi')]
+
+        for video_file in video_files:
+            video_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), video_file)
+            video_preview = QLabel()
+            video_preview.setPixmap(QPixmap(video_path).scaledToWidth(200))
+            video_name = QLabel(video_file)
+
+        layout.addWidget(self.video_widget)
+        self.video_widget.setStyleSheet("background-color: #d6001c; color: white; border-radius: 5px;")
+
+        self.setLayout(layout)
+        
 if __name__ == '__main__':
     print("SIZ>> __main__ запущен!")
     app = QApplication(sys.argv)
