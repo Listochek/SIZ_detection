@@ -1,13 +1,13 @@
 import sys
 import os
-from PyQt5.QtCore import Qt, QTimer, QSize
+from PyQt5.QtCore import Qt, QTimer, QSize, QUrl
 from PyQt5.QtGui import QImage, QPixmap, QPalette, QBrush
+from PyQt5.QtMultimedia import QMediaPlayer, QMediaContent
 from PyQt5.QtWidgets import QApplication, QWidget, QLabel, QVBoxLayout, QHBoxLayout, QSlider, QPushButton, QSizePolicy, QLineEdit, QMessageBox, QTableWidget, QTableWidgetItem, QInputDialog
 import sqlite3
 
 class MenuWidget(QWidget):
     def __init__(self):
-        
         super().__init__()
         self.init_ui()
         self.init_db()
@@ -37,7 +37,7 @@ class MenuWidget(QWidget):
         layout.addStretch(1)
         layout.setAlignment(Qt.AlignCenter)
         layout.setAlignment(auth_button, Qt.AlignCenter)
-        image = QImage("C:/SIZ_detection/pre_ui/authback.jpg").scaled(QSize(500, 500))
+        image = QImage("C:/SIZ_detection/pre_ui/authback.png").scaled(QSize(500, 500))
         palette = QPalette()
         palette.setBrush(QPalette.Window, QBrush(image))                        
         self.setPalette(palette)
@@ -55,7 +55,10 @@ class MenuWidget(QWidget):
             CREATE TABLE IF NOT EXISTS users (
                 id INTEGER PRIMARY KEY,
                 username TEXT NOT NULL,
-                password TEXT NOT NULL
+                password TEXT NOT NULL,
+                name TEXT NOT NULL,
+                surname TEXT NOT NULL,
+                tier INTEGER NOT NULL
             )
         ''')
         self.conn.commit()
@@ -65,17 +68,24 @@ class MenuWidget(QWidget):
         result = self.cursor.fetchone()
         if result:
             if login == "admin":
-                self.close()  # Закрыть текущее окно авторизации
+                self.close()
                 self.admin_window = AdminWindow(self.conn)
                 self.admin_window.show()
+                QMessageBox.information(self, "Авторизация", "Вы вошли как администратор")
             else:
-                QMessageBox.information(self, "Авторизация", "Вы вошли как сотрудник")
+                print(result)
+                if result[5] == "1":
+                    self.close()
+                    self.user_window = UserWindow(self.conn, login)
+                    self.user_window.show()
+                    QMessageBox.information(self, "Авторизация", "Вы вошли как сотрудник")
+
+                else:
+                    QMessageBox.information(self, "Авторизация", "Вы вошли никак")
         else:
             QMessageBox.warning(self, "Авторизация", "Неверный логин или пароль")
  
  
-    # Предполагается, что остальные части класса уже реализованы
-
     def add_user(self, username, password):
         try:
             self.cursor.execute('INSERT INTO users (username, password) VALUES (?, ?)', (username, password))
@@ -108,8 +118,8 @@ class AdminWindow(QWidget):
 
 
         self.table = QTableWidget()
-        self.table.setColumnCount(2)
-        self.table.setHorizontalHeaderLabels(["Логин", "Пароль"])
+        self.table.setColumnCount(5)
+        self.table.setHorizontalHeaderLabels(["Логин", "Пароль", "Имя", "Фамилия", "Тир"])
         self.load_data()
 
         self.add_button = QPushButton('Добавить сотрудника')
@@ -138,12 +148,15 @@ class AdminWindow(QWidget):
 
     def load_data(self):
         cursor = self.db_connection.cursor()
-        cursor.execute("SELECT username, password FROM users")
+        cursor.execute("SELECT username, password, name, surname, tier FROM users")
         records = cursor.fetchall()
         self.table.setRowCount(len(records))
-        for index, (username, password) in enumerate(records):
+        for index, (username, password, name, surname, tier) in enumerate(records):
             self.table.setItem(index, 0, QTableWidgetItem(username))
             self.table.setItem(index, 1, QTableWidgetItem(password))
+            self.table.setItem(index, 2, QTableWidgetItem(name))
+            self.table.setItem(index, 3, QTableWidgetItem(surname))
+            self.table.setItem(index, 4, QTableWidgetItem(tier))
 
     def add_user(self):
         username, okPressed = QInputDialog.getText(self, "Добавить сотрудника","Логин:")
@@ -154,7 +167,7 @@ class AdminWindow(QWidget):
                     cursor = self.db_connection.cursor()
                     cursor.execute('INSERT INTO users (username, password) VALUES (?, ?)', (username, password))
                     self.db_connection.commit()
-                    self.load_data()  # Обновить таблицу
+                    self.load_data()
                     QMessageBox.information(self, "Успех", "Пользователь успешно добавлен")
                 except Exception as e:
                     QMessageBox.warning(self, "Ошибка", f"Не удалось добавить пользователя: {str(e)}")
@@ -173,6 +186,33 @@ class AdminWindow(QWidget):
                 QMessageBox.warning(self, "Ошибка", f"Не удалось удалить пользователя: {str(e)}")
         else:
             QMessageBox.warning(self, "Ошибка", "Пожалуйста, выберите пользователя для удаления")
+
+class UserWindow(QWidget):
+    def __init__(self, db_connection, username, parent=None):
+        super().__init__(parent)
+        self.db_connection = db_connection
+        self.username = username
+        self.init_ui()
+
+    def init_ui(self):
+        self.setWindowTitle("Сотрудник")
+        self.setFixedSize(800, 600)
+        self.setAutoFillBackground(True)
+        p = self.palette()
+        p.setBrush(self.backgroundRole(), QBrush(QPixmap("C:/SIZ_detection/pre_ui/userback.png")))
+        self.setPalette(p)
+        self.setStyleSheet("border-radius: 10px;")
+        layout = QVBoxLayout()
+
+
+        self.setLayout(layout)
+
+
+    def confirm_video(self):
+        QMessageBox.information(self, "Подтверждение", "Видео подтверждено")
+
+    def delete_video(self):
+        QMessageBox.warning(self, "Удаление", "Видео удалено")
 
 if __name__ == '__main__':
     print("SIZ>> __main__ запущен!")
