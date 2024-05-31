@@ -56,9 +56,10 @@ def main(videopath):
 
         else:
             print("Не удалось рассчитать оптический поток для текущего кадра.")
+            break
             
     cap.release()
 # перезалив
 if __name__ == "__main__":
-    video_path = 'C:/Users/Admin/Desktop/train_dataset_rzhd_fix_train/train/VID-20240301-WA0023.mp4'
+    video_path = 'C:/Users/kames/OneDrive/Документы/GitHub/SIZ_detection/support_py/testvid.mp4'
     main(video_path)
