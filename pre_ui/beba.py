@@ -11,7 +11,7 @@ def estimatespeed(points0, points1, dt=1.0, scale=1.0):
 
 def main(videopath):
     # Инициализация захвата
-    cap = cv2.VideoCapture(video_path)
+    cap = cv2.VideoCapture(videopath)
     # Чтение первого кадра
     ret, old_frame = cap.read()
     # Проверка успешности чтения первого кадра
@@ -54,5 +54,5 @@ def main(videopath):
     cap.release()
 
 if __name__ == "__main__":
-    video_path = 'C:\\Users\\kames\\OneDrive\\Рабочий стол\\поезд\\VID_20240304_095227.mp4'
+    video_path = 'C:/Users/kames/OneDrive/Рабочий стол/поезд/VID_20240304_095227.mp4'
     main(video_path)
