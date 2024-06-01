@@ -6,11 +6,12 @@ import typing
 import math
 import cvzone
 import time
+import csv
 from PyQt5.QtCore import Qt, QSize, QUrl
 from PyQt5.QtGui import QImage, QPixmap, QPalette, QBrush, QIcon
 from PyQt5.QtMultimedia import QMediaPlayer, QMediaContent
 from PyQt5.QtMultimediaWidgets import QVideoWidget
-from PyQt5.QtWidgets import QComboBox, QToolButton, QFormLayout, QGroupBox, QScrollArea, QFrame, QFileDialog, QApplication, QWidget, QLabel, QVBoxLayout, QHBoxLayout, QSlider, QPushButton, QSizePolicy, QLineEdit, QMessageBox, QTableWidget, QTableWidgetItem, QInputDialog, QSplitter, QProgressBar
+from PyQt5.QtWidgets import QProgressDialog, QComboBox, QToolButton, QFormLayout, QGroupBox, QScrollArea, QFrame, QFileDialog, QApplication, QWidget, QLabel, QVBoxLayout, QHBoxLayout, QSlider, QPushButton, QSizePolicy, QLineEdit, QMessageBox, QTableWidget, QTableWidgetItem, QInputDialog, QSplitter, QProgressBar
 import sqlite3
 from ultralytics import YOLO
 import concurrent.futures
@@ -331,7 +332,6 @@ class UserWindow(QWidget):
         self.auth_window = MenuWidget()
         self.auth_window.show()
     
-    
     def process_and_save_video(self, input_path, output_path, rlyname):
         self.model = YOLO("models/" + selected_model)
         cap = cv2.VideoCapture(input_path)
@@ -509,11 +509,21 @@ class WatcherWindow(QWidget):
         self.player.positionChanged.connect(self.position_changed)
         self.player.durationChanged.connect(self.duration_changed)
 
+        self.violation_label = QLabel("Всё хорошо")
+        self.violation_label.setStyleSheet("font-size: 16px; color: green;")
+        self.violation_label.setAlignment(Qt.AlignCenter)
+        self.violation_label.setMaximumSize(1000, 50)
+        self.violation_label.setStyleSheet("background-color: grey; font-size: 20px; color: blue; font-weight: bold;")
+
         self.scroll_area = QScrollArea()
         self.scroll_area.setWidgetResizable(True)
         video_list_widget = QWidget()
         video_list_layout = QVBoxLayout()
         video_list_widget.setLayout(video_list_layout)
+
+        self.summary_button = QPushButton("Все нарушения")
+        self.summary_button.setStyleSheet("background-color: #666; color: white; font-size: 16px; padding: 10px; border-radius: 5px;")
+        self.summary_button.clicked.connect(self.build_logs)
 
         for video_file in video_files:
             video_path = os.path.join(video_dir, video_file)
@@ -535,16 +545,20 @@ class WatcherWindow(QWidget):
 
         self.pause_button = QPushButton('Пауза')
         self.pause_button.setStyleSheet("background-color: #666; color: white; font-size: 16px; padding: 10px; border-radius: 5px;")
-        self.pause_button.clicked.connect(self.toggle_pause)
+        self.pause_button.clicked.connect(self.build_logs)
+        self.pause_button.setVisible(False)
 
         layout = QVBoxLayout()
         layout.addWidget(splitter)
         layout.addWidget(self.slider)
         layout.addWidget(self.pause_button)
+        layout.addWidget(self.violation_label)
+        layout.addWidget(self.summary_button)
 
         self.setLayout(layout)
 
     def play_video(self, video_path):
+        self.pause_button.setVisible(True)
         self.clear_ticks()
         self.player.setMedia(QMediaContent(QUrl.fromLocalFile(video_path)))
         self.player.play()
@@ -552,6 +566,7 @@ class WatcherWindow(QWidget):
         self.check_for_violations(video_path)
 
     def check_for_violations(self, video_path):
+        self.violations = {}
         video_name = os.path.basename(video_path)
         video_base_name = os.path.splitext(video_name)[0]
         warn_file_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'warns', f"{video_base_name}.mp4.txt")
@@ -559,7 +574,12 @@ class WatcherWindow(QWidget):
             with open(warn_file_path, 'r') as warn_file:
                 for line in warn_file:
                     frame_number = int(line.strip().split('|')[0])
+                    warn_name = str(line.strip().split('|')[1])
                     self.mark_violation_on_slider(frame_number)
+                    self.violations[frame_number] = warn_name
+        else:
+            self.violation_label.setText("Всё хорошо")
+            self.violation_label.setStyleSheet("font-size: 16px; color: green;")
 
     def mark_violation_on_slider(self, frame_number):
         cap = cv2.VideoCapture(self.player.currentMedia().canonicalUrl().toLocalFile())
@@ -589,6 +609,13 @@ class WatcherWindow(QWidget):
 
     def position_changed(self, position):
         self.slider.setValue(position)
+        duration = self.player.duration()
+        if duration > 0:
+            frame_number = int((position / duration) * self.get_total_frames())
+            if frame_number in self.violations:
+                self.update_violation_label(self.violations[frame_number])
+            else:
+                self.update_violation_label("Всё хорошо", False)
 
     def duration_changed(self, duration):
         self.slider.setRange(0, duration)
@@ -614,6 +641,147 @@ class WatcherWindow(QWidget):
     def clear_ticks(self):
         for tick in self.slider.findChildren(QLabel):
             tick.deleteLater()
+        self.violation_label.setText("Всё хорошо")
+        self.violation_label.setStyleSheet("font-size: 16px; color: green;")
+
+    def update_violation_label(self, warn_name, is_violation=True):
+        if is_violation:
+            self.violation_label.setText(f"Нарушение: {warn_name}")
+            self.violation_label.setStyleSheet("font-size: 16px; color: red;")
+        else:
+            self.violation_label.setText(warn_name)
+            self.violation_label.setStyleSheet("font-size: 16px; color: green;")
+            
+    def get_total_frames(self):
+        cap = cv2.VideoCapture(self.player.currentMedia().canonicalUrl().toLocalFile())
+        total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+        cap.release()
+        return total_frames
+    
+    def build_logs(self):
+        warn_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'warns')
+        log_file_path = os.path.join(warn_dir, 'summary.csv')
+
+        # if os.path.exists(log_file_path):
+        #     print("Логи уже существуют, открытие существующего файла.")
+        #     self.log_viewer = LogViewer(log_file_path)
+        #     self.log_viewer.show()
+        #     return
+
+        progress_dialog = QProgressDialog("Сбор логов...", "Отмена", 0, 100, self)
+        progress_dialog.setWindowModality(Qt.WindowModal)
+        progress_dialog.setMinimumDuration(0)
+        progress_dialog.setValue(0)
+
+        existing_videos = set()
+        if os.path.exists(log_file_path):
+            with open(log_file_path, 'r', encoding='utf-8') as csvfile:
+                reader = csv.DictReader(csvfile, delimiter=';')
+                for row in reader:
+                    existing_videos.add(row['video'])
+
+        with open(log_file_path, 'a', newline='', encoding='utf-8') as csvfile:
+            fieldnames = ['video', 'time', 'warn']
+            writer = csv.DictWriter(csvfile, fieldnames=fieldnames, delimiter=';')
+            if not existing_videos:
+                writer.writeheader()
+
+            warn_files = [f for f in os.listdir(warn_dir) if f.endswith('.txt')]
+            total_files = len(warn_files)
+
+            for i, warn_file in enumerate(warn_files):
+                video_name = warn_file.replace('.txt', '')
+                if video_name in existing_videos:
+                    continue
+
+                warn_file_path = os.path.join(warn_dir, warn_file)
+                times = []
+                warns = []
+
+                with open(warn_file_path, 'r') as file:
+                    for line in file:
+                        frame_number, warn_name = line.strip().split('|')
+                        frame_number = int(frame_number)
+                        print(f"Обработка кадра {frame_number} для видео {video_name}")
+                        time_str = self.frame_to_time(frame_number, video_name)
+                        times.append(time_str)
+                        warns.append(warn_name)
+
+                writer.writerow({
+                    'video': video_name,
+                    'time': str(times),
+                    'warn': str(warns)
+                })
+
+                progress_dialog.setValue(int((i + 1) / total_files * 100))
+                if progress_dialog.wasCanceled():
+                    break
+
+        progress_dialog.setValue(100)
+        print("Логи собраны")
+
+        self.log_viewer = LogViewer(log_file_path)
+        self.log_viewer.show()
+
+    def frame_to_time(self, frame_number, video_name):
+        video_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'videos', f"{video_name}.mp4")
+
+        if not video_path:
+            print("Ошибка: Путь к видеофайлу пустой")
+            return "00:00"
+        
+        cap = cv2.VideoCapture(video_path)
+        if not cap.isOpened():
+            print(f"Ошибка: Не удалось открыть видеофайл {video_path}")
+            return "00:00"
+        
+        fps = cap.get(cv2.CAP_PROP_FPS)
+        cap.release()
+        
+        if fps == 0:
+            print("Ошибка: FPS равно нулю")
+            return "00:00"
+        
+        seconds = frame_number / fps
+        minutes = int(seconds // 60)
+        seconds = int(seconds % 60)
+
+        return f"{minutes:02}:{seconds:02}"
+class LogViewer(QWidget):
+    def __init__(self, log_file_path):
+        super().__init__()
+        self.log_file_path = log_file_path
+        self.init_ui()
+
+    def init_ui(self):
+        self.setWindowTitle("Просмотр логов")
+        self.setFixedSize(800, 600)
+        layout = QVBoxLayout()
+
+        self.table = QTableWidget()
+        self.table.setColumnCount(2)
+        self.table.setHorizontalHeaderLabels(["Видео", "Нарушений одежды"])
+        self.load_logs()
+
+        layout.addWidget(self.table)
+        self.setLayout(layout)
+
+    def load_logs(self):
+        with open(self.log_file_path, 'r', encoding='utf-8') as csvfile:
+            reader = csv.DictReader(csvfile, delimiter=';')
+            for row in reader:
+                video_item = QTableWidgetItem(row['video'])
+                video_item.setFlags(video_item.flags() & ~Qt.ItemIsEditable)
+                violations = eval(row['warn'])
+                wear_violations_count = sum(1 for violation in violations if violation == "WEAR")
+                violations_item = QTableWidgetItem(str(wear_violations_count))
+                violations_item.setFlags(violations_item.flags() & ~Qt.ItemIsEditable)
+                row_position = self.table.rowCount()
+                self.table.insertRow(row_position)
+                self.table.setItem(row_position, 0, video_item)
+                self.table.setItem(row_position, 1, violations_item)
+
+
 if __name__ == '__main__': 
     print("SIZ>> __main__ запущен!")
     app = QApplication(sys.argv)
