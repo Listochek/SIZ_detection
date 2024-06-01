@@ -441,8 +441,6 @@ class UserWindow(QWidget):
             cvzone.cornerRect(frame, (human[0], human[1], human[2] - human[0], human[3] - human[1]), l=9, rt=1, colorC=color, colorR=color)
             label = 'human'
             cvzone.putTextRect(frame, label, (max(0, human[0]), max(35, human[1])), scale=1, thickness=1, colorR=color)
-<<<<<<< Updated upstream
-=======
 
         if self.draw_bboxes:
             for vest in vests:
@@ -464,10 +462,9 @@ class UserWindow(QWidget):
                 cvzone.cornerRect(frame, (rail[0], rail[1], rail[2] - rail[0], rail[3] - rail[1]), l=9, rt=5, colorC=color_map['rail'])
                 label = 'rail'
                 cvzone.putTextRect(frame, label, (max(0, rail[0]), max(35, rail[1])), scale=1, thickness=1, colorR=color_map['rail'])
-
->>>>>>> Stashed changes
+                
         if wear_violation_detected:
-            self.wear_violation_marks.append(frame_number)
+            self.wear_violation_marks.append(frame_number)  
         
         return frame
     
