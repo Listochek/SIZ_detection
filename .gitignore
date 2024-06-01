@@ -5,3 +5,11 @@ pre_ui/vid5.mp4
 /runs
 yolov8m.pt
 yolov8n.pt
+warns/vid6.mp4.txt
+warns/vid1.mp4.txt
+test.py
+support_py/razmitchik.py
+support_py/crawler.py
+razmitchik.py
+support_py/crawler.py
+support_py/crawler.py

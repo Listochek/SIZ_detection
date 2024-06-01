@@ -15,7 +15,7 @@ import sqlite3
 from ultralytics import YOLO
 import concurrent.futures
 
-selected_model = "01_nano_1215.pt"
+selected_model = "best.pt"
 
 class MenuWidget(QWidget):
     def __init__(self):
@@ -350,6 +350,7 @@ class UserWindow(QWidget):
             processed_frame = self.process_frame(frame, processed_frames)
             out.write(processed_frame)
             processed_frames += 1
+
             self.progress_bar.setValue(int((processed_frames / total_frames) * 100))
 
         cap.release()
@@ -427,6 +428,7 @@ class UserWindow(QWidget):
             has_cap = any(is_inside(human, cap) for cap in caps)
             if has_vest and has_cap:
                 color = (0, 255, 0)
+         
             else:
                 color = (0, 0, 255)
                 wear_violation_detected = True
@@ -434,14 +436,12 @@ class UserWindow(QWidget):
             cvzone.cornerRect(frame, (human[0], human[1], human[2] - human[0], human[3] - human[1]), l=9, rt=1, colorC=color, colorR=color)
             label = 'human'
             cvzone.putTextRect(frame, label, (max(0, human[0]), max(35, human[1])), scale=1, thickness=1, colorR=color)
-
         if wear_violation_detected:
             self.wear_violation_marks.append(frame_number)
-
+        
         return frame
     
     def save_violation_marks(self, output_path, rlyname):
-        print("GGGGGG")
         print(self.g)
         video_name = os.path.basename(output_path)
         warn_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'warns')
