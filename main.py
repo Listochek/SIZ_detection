@@ -15,7 +15,7 @@ from PyQt5.QtWidgets import QProgressDialog, QComboBox, QToolButton, QFormLayout
 import sqlite3
 from ultralytics import YOLO
 import concurrent.futures
-from bot.bot import send_report
+#from bot.bot import send_report
 
 selected_model = "04_medium_2757.pt"
 
@@ -452,7 +452,7 @@ class UserWindow(QWidget):
             cvzone.cornerRect(frame, (human[0], human[1], human[2] - human[0], human[3] - human[1]), l=9, rt=1, colorC=color, colorR=color)
             label = 'human'
             cvzone.putTextRect(frame, label, (max(0, human[0]), max(35, human[1])), scale=1, thickness=1, colorR=color)
-
+    
         if self.draw_bboxes:
             for vest in vests:
                 cvzone.cornerRect(frame, (vest[0], vest[1], vest[2] - vest[0], vest[3] - vest[1]), l=9, rt=5, colorC=color_map['vest'])
