@@ -291,19 +291,35 @@ class UserWindow(QWidget):
 
     def add_video(self):
         file_dialog = QFileDialog()
-        file_dialog.setFileMode(QFileDialog.ExistingFile)
+        file_dialog.setFileMode(QFileDialog.ExistingFiles)
         file_dialog.setNameFilter("Video files (*.mp4 *.avi)")
         if file_dialog.exec_():
-            selected_files = file_dialog.selectedFiles()
-            if selected_files:
-                self.video_path = selected_files[0]
-                self.player.setMedia(QMediaContent(QUrl.fromLocalFile(self.video_path)))
-                self.player.play()
-                self.video_widget.setVisible(True)
-                self.confirm_button.setVisible(True)
-                self.delete_button.setVisible(True)
-                self.add_button.setVisible(False)
-                self.back_button.setVisible(False)
+            self.selected_files = file_dialog.selectedFiles()
+            print(self.selected_files)
+            if self.selected_files:
+                for file in self.selected_files:
+                    self.current_video_index = 0
+                    self.process_next_video(file)
+
+    def process_next_video(self, data):
+        if self.current_video_index < len(self.selected_files):
+            self.video_path = data
+            self.player.setMedia(QMediaContent(QUrl.fromLocalFile(self.video_path)))
+            self.player.play()
+            self.video_widget.setVisible(True)
+            self.confirm_button.setVisible(True)
+            self.delete_button.setVisible(True)
+            self.add_button.setVisible(False)
+            self.back_button.setVisible(False)
+        else:
+            self.reset_ui_after_processing()
+
+    def reset_ui_after_processing(self):
+        self.video_widget.setVisible(False)
+        self.confirm_button.setVisible(False)
+        self.delete_button.setVisible(False)
+        self.add_button.setVisible(True)
+        self.back_button.setVisible(True)
 
     def confirm_video(self):
         print(selected_model)
@@ -318,6 +334,7 @@ class UserWindow(QWidget):
             video_count = len(os.listdir(video_dir))
             new_file_name = f"vid{video_count + 1}.mp4"
             destination_path = os.path.join(video_dir, new_file_name)
+            print(destination_path, new_file_name)
             self.progress_bar.setVisible(True)
             self.process_and_save_video(self.video_path, destination_path, new_file_name)
         
@@ -358,6 +375,7 @@ class UserWindow(QWidget):
 
         self.wear_violation_marks = []
         self.hbt_violation_marks = []
+        self.hor_violation_marks = []
 
         while cap.isOpened():
             ret, frame = cap.read()
@@ -440,15 +458,29 @@ class UserWindow(QWidget):
         
         def is_bw_train(train1, train2, human):
             return train1[0] <= human[0] and human[2] <= train2[2] and train1[1] <= human[1] and human[3] <= train2[3]
+    
+        def is_hor(human, rail):
+            points_on_rail = 0
+            if human[0] <= rail[0] <= human[2]:
+                points_on_rail += 1
+            if human[0] <= rail[2] <= human[2]:
+                points_on_rail += 1
+            if human[1] <= rail[1] <= human[3]:
+                points_on_rail += 1
+            if human[1] <= rail[3] <= human[3]:
+                points_on_rail += 1
+            return points_on_rail >= 2
 
         wear_violation_detected = False # челик не по форме
         hbt_violation_detected = False # челик между поездами
+        hor_violation_detected = False # челик на рельсах
 
         for human in humans:
             has_vest = any(is_inside(human, vest) for vest in vests)
             has_cap = any(is_inside(human, cap) for cap in caps)
+            has_hor = any(is_hor(human, rail) for rail in rails)
             has_human_bw_train = any(is_bw_train(train1, train2, human) for train1, train2 in zip(trains, trains[1:]))
-            if has_vest and has_cap and not has_human_bw_train:
+            if has_vest and has_cap and not has_human_bw_train and not has_hor:
                 color = (0, 255, 0)
          
             else:
@@ -457,6 +489,9 @@ class UserWindow(QWidget):
                     wear_violation_detected = True
                 elif has_human_bw_train:
                     hbt_violation_detected = True
+                elif has_hor:
+                    if any(train for train in trains):
+                        hor_violation_detected = True
 
             cvzone.cornerRect(frame, (human[0], human[1], human[2] - human[0], human[3] - human[1]), l=9, rt=1, colorC=color, colorR=color)
             label = 'human'
@@ -487,6 +522,8 @@ class UserWindow(QWidget):
             self.wear_violation_marks.append(frame_number)  
         if hbt_violation_detected:
             self.hbt_violation_marks.append(frame_number)
+        if hor_violation_detected:
+            self.hor_violation_marks.append(frame_number)
         
         return frame
     
@@ -502,6 +539,8 @@ class UserWindow(QWidget):
                 warn_file.write(f"{mark}|WEAR\n")
             for mark in self.hbt_violation_marks:
                 warn_file.write(f"{mark}|HBT\n")
+            for mark in self.hor_violation_marks:
+                warn_file.write(f"{mark}|HOR\n")
             warn_file.close()
 
 class WatcherWindow(QWidget):
@@ -787,8 +826,8 @@ class LogViewer(QWidget):
         layout = QVBoxLayout()
 
         self.table = QTableWidget()
-        self.table.setColumnCount(3)
-        self.table.setHorizontalHeaderLabels(["Видео", "Нарушений одежды", "Человек между поездами"])
+        self.table.setColumnCount(4)
+        self.table.setHorizontalHeaderLabels(["Видео", "Нарушений одежды", "Человек между поездами", "Человек на жд путях"])
         self.load_logs()
 
         self.send_report_button = QPushButton("Отправить отчёт")
@@ -808,15 +847,19 @@ class LogViewer(QWidget):
                 violations = eval(row['warn'])
                 wear_violations_count = sum(1 for violation in violations if violation == "WEAR")
                 hbt_violations_count = sum(1 for violation in violations if violation == "HBT")
+                hor_violations_detected = sum(1 for violation in violations if violation == "HOR")
                 wear_violations_item = QTableWidgetItem(str(wear_violations_count))
                 wear_violations_item.setFlags(wear_violations_item.flags() & ~Qt.ItemIsEditable)
                 hbt_violations_item = QTableWidgetItem(str(hbt_violations_count))
                 hbt_violations_item.setFlags(hbt_violations_item.flags() & ~Qt.ItemIsEditable)
+                hor_violations_item = QTableWidgetItem(str(hor_violations_detected))
+                hor_violations_item.setFlags(hor_violations_item.flags() & ~Qt.ItemIsEditable)
                 row_position = self.table.rowCount()
                 self.table.insertRow(row_position)
                 self.table.setItem(row_position, 0, video_item)
                 self.table.setItem(row_position, 1, wear_violations_item)
                 self.table.setItem(row_position, 2, hbt_violations_item)
+                self.table.setItem(row_position, 3, hor_violations_item)
                 
     def adder_stat(self):
         name_csv_file = 'summary.csv'
@@ -846,11 +889,6 @@ class LogViewer(QWidget):
         # Сохранение диаграммы в файл
         output_path = os.path.join(current_directory, 'stat.jpg')
         plt.savefig(output_path, bbox_inches="tight")
-
-
-
- 
-       
 
     def send_report(self):
         photo_path = 'statistics_graph/stat.jpg'
