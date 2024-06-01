@@ -18,13 +18,12 @@ import shutil
 
 
 papka_delite_name = 'images' #начало названия файлов
-prefix = papka_delite_name + '_crawler123' #основное название картинки
-dirr = 'C:/Users/Admin/Desktop/DATA_siz/et' #путь к папке куда скачивать картинки
+prefix = papka_delite_name + '_humans' #основное название картинки
+dirr = 'C:/Users/Admin/Desktop/dataset_4/images' #путь к папке куда скачивать картинки
 lener_mass = []
 mass_train = []
 dir_mass = []
 keywords = [
-    'люди в форме на жд путях'
 
     ] #список слов по которым будет работать поиск картинки
 
@@ -41,7 +40,7 @@ def create_folders(dirr, keywords):
 def people_crawl():
     pass_dirr = dirr
     for i in range(len(keywords)):
-        pass_dirr = pass_dirr + '/' + 'images_crawler' + str(i) + '/'
+        pass_dirr = pass_dirr + '/' + 'images_crawler' + str(i + 81) + '/'
         #print(pass_dirr)
         bing_crawler = BingImageCrawler(parser_threads=8, downloader_threads=10, storage={'root_dir': pass_dirr})
         # потеря при скачивании картинок от 0 - 10%*(потери при скачиванни картинок по 100шт)
