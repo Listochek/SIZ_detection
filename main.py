@@ -15,7 +15,16 @@ from PyQt5.QtWidgets import QProgressDialog, QComboBox, QToolButton, QFormLayout
 import sqlite3
 from ultralytics import YOLO
 import concurrent.futures
-#from bot.bot import send_report
+
+from collections import Counter
+import matplotlib.pyplot as plt
+
+
+import telebot
+
+TOKEN = '6470937115:AAGpQLFJe3_zXyfpHaLIlinibs0i60uVX8M'
+
+
 
 selected_model = "04_medium_2757.pt"
 
@@ -808,14 +817,58 @@ class LogViewer(QWidget):
                 self.table.setItem(row_position, 0, video_item)
                 self.table.setItem(row_position, 1, wear_violations_item)
                 self.table.setItem(row_position, 2, hbt_violations_item)
+                
+    def adder_stat(self):
+        name_csv_file = 'summary.csv'
+
+        current_directory = os.path.dirname(os.path.abspath(__file__))
+        file_path = os.path.join(current_directory, '..', 'warns', name_csv_file)
+
+
+        warnings = []
+        with open(file_path, newline='', encoding='utf-8') as csvfile:
+            reader = csv.DictReader(csvfile, delimiter=';')
+            for row in reader:
+                if row['warn']:
+                    warnings.extend(eval(row['warn']))
+
+        warning_counts = Counter(warnings)
+        labels = [f"{label} - {count}" for label, count in warning_counts.items()]
+        sizes = warning_counts.values()
+
+
+        fig1, ax1 = plt.subplots()
+        ax1.pie(sizes, autopct='%1.1f%%', startangle=90)
+        ax1.axis('equal')  
+
+        plt.legend(labels, loc="center left", bbox_to_anchor=(1, 0.5))
+
+        # Сохранение диаграммы в файл
+        output_path = os.path.join(current_directory, 'stat.jpg')
+        plt.savefig(output_path, bbox_inches="tight")
+
+
+
+ 
+       
 
     def send_report(self):
+        photo_path = 'statistics_graph/stat.jpg'
+        user_id = [1010612567]  # 900721585, 464436154
+        bot = telebot.TeleBot(TOKEN)
+    
         try:
-            send_report(self.log_file_path)
+            for users_id in user_id:
+                with open(photo_path, 'rb') as photo:
+                    bot.send_message(users_id, 'Обновлена статистика.\n    Нарушения\nWEAR - Нарушение при ношения формы\nHBT - Человек оказался между поездами')
+                    bot.send_photo(users_id, photo)
             QMessageBox.information(self, "Отправка отчёта", "Отчёт успешно отправлен через телеграм-бота.")
         except Exception as e:
+            print('TESTTEST')
             QMessageBox.critical(self, "Ошибка отправки", f"Не удалось отправить отчёт: {str(e)}")
-
+        finally:
+            bot.stop_polling()  # Отключение бота
+            bot = None  # Освобождение ресурсов
 
 if __name__ == '__main__': 
     print("SIZ>> __main__ запущен!")

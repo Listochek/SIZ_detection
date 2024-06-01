@@ -2,7 +2,7 @@ import telebot
 
 bot = telebot.TeleBot('6470937115:AAGpQLFJe3_zXyfpHaLIlinibs0i60uVX8M')
 photo_path = 'statistics_graph/stat.jpg'
-users_id = [1010612567] #, 900721585 464436154,
+users_id = [1010612567, 900721585, 464436154]  
 
 @bot.message_handler(commands=['start'])
 def main(message):
