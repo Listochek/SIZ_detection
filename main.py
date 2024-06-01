@@ -15,7 +15,11 @@ import sqlite3
 from ultralytics import YOLO
 import concurrent.futures
 
+<<<<<<< Updated upstream
 selected_model = "best.pt"
+=======
+selected_model = "02_middle_2100.pt"
+>>>>>>> Stashed changes
 
 class MenuWidget(QWidget):
     def __init__(self):
@@ -221,6 +225,7 @@ class AdminWindow(QWidget):
 class UserWindow(QWidget):
     def __init__(self, db_connection, username, parent=None):
         super().__init__(parent)
+        self.draw_bboxes = True
         self.db_connection = db_connection
         self.username = username
         self.init_ui()
@@ -382,19 +387,19 @@ class UserWindow(QWidget):
                 x1, y1, x2, y2 = map(int, box.xyxy[0])
                 conf = math.ceil((box.conf[0] * 100)) / 100
                 cls = int(box.cls[0])
-                
-                if cls < len(self.classNames):
-                    class_name = self.classNames[cls]
-                    if class_name == 'human':
-                        humans.append((x1, y1, x2, y2))
-                    elif class_name == 'vest':
-                        vests.append((x1, y1, x2, y2))
-                    elif class_name == 'cap':
-                        caps.append((x1, y1, x2, y2))
-                    elif class_name == 'train':
-                        trains.append((x1, y1, x2, y2))
-                    elif class_name == "rail":
-                        rails.append((x1, y1, x2, y2))
+                if conf > 0.4:
+                    if cls < len(self.classNames):
+                        class_name = self.classNames[cls]
+                        if class_name == 'human':
+                            humans.append((x1, y1, x2, y2))
+                        elif class_name == 'vest':
+                            vests.append((x1, y1, x2, y2))
+                        elif class_name == 'cap':
+                            caps.append((x1, y1, x2, y2))
+                        elif class_name == 'train':
+                            trains.append((x1, y1, x2, y2))
+                        elif class_name == "rail":
+                            rails.append((x1, y1, x2, y2))
 
         def calculate_train_speed(trains, frame_rate):
             if len(trains) < 2:
@@ -436,6 +441,31 @@ class UserWindow(QWidget):
             cvzone.cornerRect(frame, (human[0], human[1], human[2] - human[0], human[3] - human[1]), l=9, rt=1, colorC=color, colorR=color)
             label = 'human'
             cvzone.putTextRect(frame, label, (max(0, human[0]), max(35, human[1])), scale=1, thickness=1, colorR=color)
+<<<<<<< Updated upstream
+=======
+
+        if self.draw_bboxes:
+            for vest in vests:
+                cvzone.cornerRect(frame, (vest[0], vest[1], vest[2] - vest[0], vest[3] - vest[1]), l=9, rt=5, colorC=color_map['vest'])
+                label = 'vest'
+                cvzone.putTextRect(frame, label, (max(0, vest[0]), max(35, vest[1])), scale=1, thickness=1, colorR=color_map['vest'])
+
+            for cap in caps:
+                cvzone.cornerRect(frame, (cap[0], cap[1], cap[2] - cap[0], cap[3] - cap[1]), l=9, rt=5, colorC=color_map['cap'])
+                label = 'cap'
+                cvzone.putTextRect(frame, label, (max(0, cap[0]), max(35, cap[1])), scale=1, thickness=1, colorR=color_map['cap'])
+            
+            for train in trains:
+                cvzone.cornerRect(frame, (train[0], train[1], train[2] - train[0], train[3] - train[1]), l=9, rt=5, colorC=color_map['train'])
+                label = 'train'
+                cvzone.putTextRect(frame, label, (max(0, train[0]), max(35, train[1])), scale=1, thickness=1, colorR=color_map['train'])
+            
+            for rail in rails:
+                cvzone.cornerRect(frame, (rail[0], rail[1], rail[2] - rail[0], rail[3] - rail[1]), l=9, rt=5, colorC=color_map['rail'])
+                label = 'rail'
+                cvzone.putTextRect(frame, label, (max(0, rail[0]), max(35, rail[1])), scale=1, thickness=1, colorR=color_map['rail'])
+
+>>>>>>> Stashed changes
         if wear_violation_detected:
             self.wear_violation_marks.append(frame_number)
         
@@ -522,6 +552,7 @@ class WatcherWindow(QWidget):
         self.setLayout(layout)
 
     def play_video(self, video_path):
+        self.clear_ticks()
         self.player.setMedia(QMediaContent(QUrl.fromLocalFile(video_path)))
         self.player.play()
         time.sleep(1)
@@ -587,6 +618,9 @@ class WatcherWindow(QWidget):
             self.toggle_pause()
         super().keyPressEvent(event)
 
+    def clear_ticks(self):
+        for tick in self.slider.findChildren(QLabel):
+            tick.deleteLater()
 if __name__ == '__main__': 
     print("SIZ>> __main__ запущен!")
     app = QApplication(sys.argv)

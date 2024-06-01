@@ -13,7 +13,7 @@ def rename_files(directory):
     # Переименовываем файлы
     for index, file in enumerate(files):
         # Создаем новое имя файла
-        new_filename = f"{index + 1 + 1360}.png"
+        new_filename = f"{index + 1 + 2100}.png"
         # Старый полный путь к файлу
         old_file = os.path.join(directory, file)
         # Новый полный путь к файлу
