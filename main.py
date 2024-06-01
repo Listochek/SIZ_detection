@@ -207,7 +207,7 @@ class AdminWindow(QWidget):
             try:
                 cursor = self.db_connection.cursor()
                 cursor.execute('DELETE FROM users WHERE username = ?', (username,))
-                self.db_connection.commit()
+                self.db_connection.commit() 
                 self.load_data() 
                 QMessageBox.information(self, "Успех", "Пользователь успешно удален")
             except Exception as e:
@@ -218,6 +218,7 @@ class AdminWindow(QWidget):
     def set_global_model(self):
         global selected_model
         selected_model = self.model_combo_box.currentText()
+        print(selected_model)
 
 class UserWindow(QWidget):
 
@@ -226,6 +227,7 @@ class UserWindow(QWidget):
         self.draw_bboxes = True
         self.db_connection = db_connection
         self.username = username
+        self.g = []
         self.init_ui()
 
     def init_ui(self):
@@ -294,6 +296,7 @@ class UserWindow(QWidget):
                 self.back_button.setVisible(False)
 
     def confirm_video(self):
+        print(selected_model)
         self.confirm_button.setVisible(False)
         self.delete_button.setVisible(False)
         self.add_button.setVisible(False)
@@ -343,21 +346,25 @@ class UserWindow(QWidget):
         total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
         processed_frames = 0
 
+        self.wear_violation_marks = []
+        self.hbt_violation_marks = []
+
         while cap.isOpened():
             ret, frame = cap.read()
             if not ret:
                 break
 
-            results = self.model(frame)
             current_frame = int(cap.get(cv2.CAP_PROP_POS_FRAMES))
-            violation_detected = False
+            processed_frame = self.process_frame(frame, current_frame)
+            out.write(processed_frame)
 
+            processed_frames += 1
             self.progress_bar.setValue(int((processed_frames / total_frames) * 100))
 
         cap.release()
         out.release()
 
-        self.save_violation_marks(input_path, rlyname)
+        self.save_violation_marks(output_path, rlyname)
         
 
     def process_frame(self, frame, frame_number): 
@@ -375,7 +382,6 @@ class UserWindow(QWidget):
         caps = []
         trains = []
         rails = []
-        self.g = []
 
         for result in results:
             boxes = result.boxes
@@ -474,7 +480,7 @@ class UserWindow(QWidget):
         
         return frame
     
-    def save_violation_marks(self, output_path, rlyname, warn):
+    def save_violation_marks(self, output_path, rlyname):
         print(self.g)
         video_name = os.path.basename(output_path)
         warn_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'warns')
