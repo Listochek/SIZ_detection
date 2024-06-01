@@ -16,7 +16,7 @@ import sqlite3
 from ultralytics import YOLO
 import concurrent.futures
 
-selected_model = "02_middle_2100.pt"
+selected_model = "03_nano_2757.pt"
 
 class MenuWidget(QWidget):
     def __init__(self):
@@ -724,7 +724,7 @@ class WatcherWindow(QWidget):
         self.log_viewer.show()
 
     def frame_to_time(self, frame_number, video_name):
-        video_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'videos', f"{video_name}.mp4")
+        video_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'videos', f"{video_name}")
 
         if not video_path:
             print("Ошибка: Путь к видеофайлу пустой")
