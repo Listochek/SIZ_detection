@@ -787,14 +787,14 @@ class LogViewer(QWidget):
                 violations = eval(row['warn'])
                 wear_violations_count = sum(1 for violation in violations if violation == "WEAR")
                 hbt_violations_count = sum(1 for violation in violations if violation == "HBT")
-                violations_item = QTableWidgetItem(str(wear_violations_count))
-                violations_item.setFlags(violations_item.flags() & ~Qt.ItemIsEditable)
+                wear_violations_item = QTableWidgetItem(str(wear_violations_count))
+                wear_violations_item.setFlags(wear_violations_item.flags() & ~Qt.ItemIsEditable)
                 hbt_violations_item = QTableWidgetItem(str(hbt_violations_count))
                 hbt_violations_item.setFlags(hbt_violations_item.flags() & ~Qt.ItemIsEditable)
                 row_position = self.table.rowCount()
                 self.table.insertRow(row_position)
                 self.table.setItem(row_position, 0, video_item)
-                self.table.setItem(row_position, 1, violations_item)
+                self.table.setItem(row_position, 1, wear_violations_item)
                 self.table.setItem(row_position, 2, hbt_violations_item)
 
 
