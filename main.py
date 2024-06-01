@@ -882,7 +882,7 @@ class LogViewer(QWidget):
 
         # Сохранение диаграммы в файл
         output_path = os.path.join(current_directory, 'statistics_graph/stat.jpg')
-        plt.savefig(output_path, bbox_inches="tight")
+        plt.savefig(output_path)
 
     def send_report(self):
         self.adder_stat()
