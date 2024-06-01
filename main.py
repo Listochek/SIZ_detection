@@ -15,11 +15,7 @@ import sqlite3
 from ultralytics import YOLO
 import concurrent.futures
 
-<<<<<<< Updated upstream
-selected_model = "best.pt"
-=======
 selected_model = "02_middle_2100.pt"
->>>>>>> Stashed changes
 
 class MenuWidget(QWidget):
     def __init__(self):
