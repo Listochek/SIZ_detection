@@ -16,7 +16,7 @@ import sqlite3
 from ultralytics import YOLO
 import concurrent.futures
 
-selected_model = "02_middle_2100.pt"
+selected_model = "04_medium_2757.pt"
 
 class MenuWidget(QWidget):
     def __init__(self):
@@ -220,6 +220,7 @@ class AdminWindow(QWidget):
         selected_model = self.model_combo_box.currentText()
 
 class UserWindow(QWidget):
+
     def __init__(self, db_connection, username, parent=None):
         super().__init__(parent)
         self.draw_bboxes = True
@@ -342,15 +343,14 @@ class UserWindow(QWidget):
         total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
         processed_frames = 0
 
-        self.wear_violation_marks = []
-
         while cap.isOpened():
-            success, frame = cap.read()
-            if not success:
+            ret, frame = cap.read()
+            if not ret:
                 break
-            processed_frame = self.process_frame(frame, processed_frames)
-            out.write(processed_frame)
-            processed_frames += 1
+
+            results = self.model(frame)
+            current_frame = int(cap.get(cv2.CAP_PROP_POS_FRAMES))
+            violation_detected = False
 
             self.progress_bar.setValue(int((processed_frames / total_frames) * 100))
 
@@ -360,7 +360,7 @@ class UserWindow(QWidget):
         self.save_violation_marks(input_path, rlyname)
         
 
-    def process_frame(self, frame, frame_number):
+    def process_frame(self, frame, frame_number): 
         color_map = {
             'train': (0, 255, 0),
             'cap': (255, 0, 0),
@@ -414,25 +414,33 @@ class UserWindow(QWidget):
             speed = distance / time_diff
 
             return speed
-
+        
         frame_rate = 30
         train_speed = calculate_train_speed(trains, frame_rate)
         self.g.append(f"Train speed: {train_speed} pixels/second")
 
         def is_inside(box1, box2):
             return sum(b1 <= b2 for b1, b2 in zip(box1, box2)) >= 2
+        
+        def is_bw_train(train1, train2, human):
+            return train1[0] <= human[0] and human[2] <= train2[2] and train1[1] <= human[1] and human[3] <= train2[3]
 
-        wear_violation_detected = False
+        wear_violation_detected = False # челик не по форме
+        hbt_violation_detected = False # челик между поездами
 
         for human in humans:
             has_vest = any(is_inside(human, vest) for vest in vests)
             has_cap = any(is_inside(human, cap) for cap in caps)
-            if has_vest and has_cap:
+            has_human_bw_train = any(is_bw_train(train1, train2, human) for train1, train2 in zip(trains, trains[1:]))
+            if has_vest and has_cap and not has_human_bw_train:
                 color = (0, 255, 0)
          
             else:
                 color = (0, 0, 255)
-                wear_violation_detected = True
+                if not has_vest or not has_cap:
+                    wear_violation_detected = True
+                elif has_human_bw_train:
+                    hbt_violation_detected = True
 
             cvzone.cornerRect(frame, (human[0], human[1], human[2] - human[0], human[3] - human[1]), l=9, rt=1, colorC=color, colorR=color)
             label = 'human'
@@ -461,10 +469,12 @@ class UserWindow(QWidget):
                 
         if wear_violation_detected:
             self.wear_violation_marks.append(frame_number)  
+        if hbt_violation_detected:
+            self.hbt_violation_marks.append(frame_number)
         
         return frame
     
-    def save_violation_marks(self, output_path, rlyname):
+    def save_violation_marks(self, output_path, rlyname, warn):
         print(self.g)
         video_name = os.path.basename(output_path)
         warn_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'warns')
@@ -474,7 +484,8 @@ class UserWindow(QWidget):
         with open(warn_file_path, 'w') as warn_file:
             for mark in self.wear_violation_marks:
                 warn_file.write(f"{mark}|WEAR\n")
-
+            for mark in self.hbt_violation_marks:
+                warn_file.write(f"{mark}|HBT\n")
             warn_file.close()
 
 class WatcherWindow(QWidget):
@@ -724,7 +735,7 @@ class WatcherWindow(QWidget):
         self.log_viewer.show()
 
     def frame_to_time(self, frame_number, video_name):
-        video_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'videos', f"{video_name}.mp4")
+        video_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'videos', f"{video_name}")
 
         if not video_path:
             print("Ошибка: Путь к видеофайлу пустой")
@@ -747,6 +758,7 @@ class WatcherWindow(QWidget):
         seconds = int(seconds % 60)
 
         return f"{minutes:02}:{seconds:02}"
+
 class LogViewer(QWidget):
     def __init__(self, log_file_path):
         super().__init__()
@@ -759,8 +771,8 @@ class LogViewer(QWidget):
         layout = QVBoxLayout()
 
         self.table = QTableWidget()
-        self.table.setColumnCount(2)
-        self.table.setHorizontalHeaderLabels(["Видео", "Нарушений одежды"])
+        self.table.setColumnCount(3)
+        self.table.setHorizontalHeaderLabels(["Видео", "Нарушений одежды", "Человек между поездами"])
         self.load_logs()
 
         layout.addWidget(self.table)
@@ -774,12 +786,16 @@ class LogViewer(QWidget):
                 video_item.setFlags(video_item.flags() & ~Qt.ItemIsEditable)
                 violations = eval(row['warn'])
                 wear_violations_count = sum(1 for violation in violations if violation == "WEAR")
-                violations_item = QTableWidgetItem(str(wear_violations_count))
-                violations_item.setFlags(violations_item.flags() & ~Qt.ItemIsEditable)
+                hbt_violations_count = sum(1 for violation in violations if violation == "HBT")
+                wear_violations_item = QTableWidgetItem(str(wear_violations_count))
+                wear_violations_item.setFlags(wear_violations_item.flags() & ~Qt.ItemIsEditable)
+                hbt_violations_item = QTableWidgetItem(str(hbt_violations_count))
+                hbt_violations_item.setFlags(hbt_violations_item.flags() & ~Qt.ItemIsEditable)
                 row_position = self.table.rowCount()
                 self.table.insertRow(row_position)
                 self.table.setItem(row_position, 0, video_item)
-                self.table.setItem(row_position, 1, violations_item)
+                self.table.setItem(row_position, 1, wear_violations_item)
+                self.table.setItem(row_position, 2, hbt_violations_item)
 
 
 if __name__ == '__main__': 

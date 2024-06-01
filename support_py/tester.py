@@ -3,8 +3,8 @@ import cv2
 import cvzone
 import math
 
-model = YOLO("01_nano_1215.pt")
-cap = cv2.VideoCapture("videos/vid2.mp4")
+model = YOLO("models/03_nano_2757.pt")
+cap = cv2.VideoCapture("C:/Users/artem\Downloads/train/2_5395803543229709215.mp4")
 
 classNames = ['train', 'cap', 'human', 'rail', 'vest']
 cap.set(3, 1280)
