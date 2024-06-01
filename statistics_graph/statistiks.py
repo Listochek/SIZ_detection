@@ -8,6 +8,8 @@ def adder_stat():
 
     current_directory = os.path.dirname(os.path.abspath(__file__))
     file_path = os.path.join(current_directory, '..', 'warns', name_csv_file)
+    print(current_directory)
+    print(file_path)
 
 
     warnings = []
@@ -29,7 +31,7 @@ def adder_stat():
     plt.legend(labels, loc="center left", bbox_to_anchor=(1, 0.5))
 
     # Сохранение диаграммы в файл
-    output_path = os.path.join(current_directory, 'stat.jpg')
+    output_path = os.path.join(current_directory, 'stat.png')
     plt.savefig(output_path, bbox_inches="tight")
 
     print(f"Диаграмма сохранена по пути: {output_path}")
