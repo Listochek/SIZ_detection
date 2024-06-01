@@ -587,7 +587,7 @@ class WatcherWindow(QWidget):
         video_list_layout = QVBoxLayout()
         video_list_widget.setLayout(video_list_layout)
 
-        self.summary_button = QPushButton("Все нарушения")
+        self.summary_button = QPushButton("Общий отчёт")
         self.summary_button.setStyleSheet("background-color: #666; color: white; font-size: 16px; padding: 10px; border-radius: 5px;")
         self.summary_button.clicked.connect(self.build_logs)
 
