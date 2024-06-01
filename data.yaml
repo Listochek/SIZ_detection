@@ -1,0 +1,12 @@
+names:
+- train
+- cap
+- human
+- rail
+- vest
+
+nc: 5
+path: C:\SIZ_detection\dataset
+train: images/train
+val: images/val
+test: images/test
