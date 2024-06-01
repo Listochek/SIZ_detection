@@ -771,7 +771,7 @@ class LogViewer(QWidget):
         layout = QVBoxLayout()
 
         self.table = QTableWidget()
-        self.table.setColumnCount(2)
+        self.table.setColumnCount(3)
         self.table.setHorizontalHeaderLabels(["Видео", "Нарушений одежды", "Человек между поездами"])
         self.load_logs()
 
