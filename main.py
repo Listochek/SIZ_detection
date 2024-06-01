@@ -15,6 +15,7 @@ from PyQt5.QtWidgets import QProgressDialog, QComboBox, QToolButton, QFormLayout
 import sqlite3
 from ultralytics import YOLO
 import concurrent.futures
+from bot.bot import send_report
 
 selected_model = "04_medium_2757.pt"
 
@@ -781,7 +782,12 @@ class LogViewer(QWidget):
         self.table.setHorizontalHeaderLabels(["Видео", "Нарушений одежды", "Человек между поездами"])
         self.load_logs()
 
+        self.send_report_button = QPushButton("Отправить отчёт")
+        self.send_report_button.setStyleSheet("background-color: #4CAF50; color: white; font-size: 16px; padding: 10px; border-radius: 5px;")
+        self.send_report_button.clicked.connect(self.send_report)
+
         layout.addWidget(self.table)
+        layout.addWidget(self.send_report_button)
         self.setLayout(layout)
 
     def load_logs(self):
@@ -802,6 +808,13 @@ class LogViewer(QWidget):
                 self.table.setItem(row_position, 0, video_item)
                 self.table.setItem(row_position, 1, wear_violations_item)
                 self.table.setItem(row_position, 2, hbt_violations_item)
+
+    def send_report(self):
+        try:
+            send_report(self.log_file_path)
+            QMessageBox.information(self, "Отправка отчёта", "Отчёт успешно отправлен через телеграм-бота.")
+        except Exception as e:
+            QMessageBox.critical(self, "Ошибка отправки", f"Не удалось отправить отчёт: {str(e)}")
 
 
 if __name__ == '__main__': 
