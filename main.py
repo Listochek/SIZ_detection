@@ -310,6 +310,8 @@ class UserWindow(QWidget):
     def confirm_video(self):
         total_work = 0
         for vid in self.selected_files:
+            self.player.setMedia(QMediaContent())
+            self.player.stop()
             self.player.setMedia(QMediaContent(QUrl.fromLocalFile(vid)))
             self.player.play()
             total_work += 1
