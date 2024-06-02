@@ -333,16 +333,16 @@ class UserWindow(QWidget):
                 self.progress_bar.setVisible(True)
                 self.process_and_save_video(self.video_path, destination_path, new_file_name)
             
-            print("обработано: ", total_work)
-            self.player.setMedia(QMediaContent())
-            self.player.stop()
-            self.processing_label.setVisible(False)
-            self.video_widget.setVisible(False)
-            self.add_button.setVisible(True)
-            self.progress_bar.setVisible(False)
-            self.back_button.setVisible(True)
-            self.add_button.setVisible(True)
-            self.back_button.setVisible(True)
+        print("обработано: ", total_work)
+        self.player.setMedia(QMediaContent())
+        self.player.stop()
+        self.processing_label.setVisible(False)
+        self.video_widget.setVisible(False)
+        self.add_button.setVisible(True)
+        self.progress_bar.setVisible(False)
+        self.back_button.setVisible(True)
+        self.add_button.setVisible(True)
+        self.back_button.setVisible(True)
 
     def delete_video(self):
         self.player.setMedia(QMediaContent())
@@ -372,6 +372,7 @@ class UserWindow(QWidget):
         self.wear_violation_marks = []
         self.hbt_violation_marks = []
         self.hor_violation_marks = []
+        self.htctt_violation_marks = []
 
         while cap.isOpened():
             ret, frame = cap.read()
@@ -467,9 +468,18 @@ class UserWindow(QWidget):
                 points_on_rail += 1
             return points_on_rail >= 2
 
+        def is_train_too_large(frame_width, frame_height):
+            for train in trains:
+                train_width = train[2] - train[0]
+                train_height = train[3] - train[1]
+                frame_area = frame_width * frame_height
+                train_area = train_width * train_height
+                return (train_area / frame_area) > 0.8
+
         wear_violation_detected = False # челик не по форме
         hbt_violation_detected = False # челик между поездами
         hor_violation_detected = False # челик на рельсах
+        htctt_violation_detected = False # челик слишком близко к поезду
 
         for human in humans:
             has_vest = any(is_inside(human, vest) for vest in vests)
@@ -478,16 +488,20 @@ class UserWindow(QWidget):
             has_human_bw_train = any(is_bw_train(train1, train2, human) for train1, train2 in zip(trains, trains[1:]))
             if has_vest and has_cap and not has_human_bw_train and not has_hor:
                 color = (0, 255, 0)
-         
+
             else:
                 color = (0, 0, 255)
                 if not has_vest or not has_cap:
                     wear_violation_detected = True
-                elif has_human_bw_train:
+                if has_human_bw_train:
                     hbt_violation_detected = True
-                elif has_hor:
+                if has_hor:
                     if any(train for train in trains):
                         hor_violation_detected = True
+
+                if is_train_too_large(frame.shape[1], frame.shape[0]):
+                    htctt_violation_detected = True
+                
 
             cvzone.cornerRect(frame, (human[0], human[1], human[2] - human[0], human[3] - human[1]), l=9, rt=1, colorC=color, colorR=color)
             label = 'human'
@@ -520,6 +534,8 @@ class UserWindow(QWidget):
             self.hbt_violation_marks.append(frame_number)
         if hor_violation_detected:
             self.hor_violation_marks.append(frame_number)
+        if htctt_violation_detected:
+            self.htctt_violation_marks.append(frame_number)
         
         return frame
     
@@ -537,6 +553,8 @@ class UserWindow(QWidget):
                 warn_file.write(f"{mark}|HBT\n")
             for mark in self.hor_violation_marks:
                 warn_file.write(f"{mark}|HOR\n")
+            for mark in self.htctt_violation_marks:
+                warn_file.write(f"{mark}|HTCTT\n")
             warn_file.close()
 
 class WatcherWindow(QWidget):
@@ -822,8 +840,8 @@ class LogViewer(QWidget):
         layout = QVBoxLayout()
 
         self.table = QTableWidget()
-        self.table.setColumnCount(4)
-        self.table.setHorizontalHeaderLabels(["Видео", "Нарушений одежды", "Человек между поездами", "Человек на жд путях"])
+        self.table.setColumnCount(5)
+        self.table.setHorizontalHeaderLabels(["Видео", "Нарушений одежды", "Человек между поездами", "Человек на жд путях", "человек слишком близко к поезду"])
         self.load_logs()
 
         self.send_report_button = QPushButton("Отправить отчёт")
@@ -844,18 +862,22 @@ class LogViewer(QWidget):
                 wear_violations_count = sum(1 for violation in violations if violation == "WEAR")
                 hbt_violations_count = sum(1 for violation in violations if violation == "HBT")
                 hor_violations_detected = sum(1 for violation in violations if violation == "HOR")
+                htctt_violations_detected = sum(1 for violation in violations if violation == "HTCTT")
                 wear_violations_item = QTableWidgetItem(str(wear_violations_count))
                 wear_violations_item.setFlags(wear_violations_item.flags() & ~Qt.ItemIsEditable)
                 hbt_violations_item = QTableWidgetItem(str(hbt_violations_count))
                 hbt_violations_item.setFlags(hbt_violations_item.flags() & ~Qt.ItemIsEditable)
                 hor_violations_item = QTableWidgetItem(str(hor_violations_detected))
                 hor_violations_item.setFlags(hor_violations_item.flags() & ~Qt.ItemIsEditable)
+                htctt_violations_item = QTableWidgetItem(str(htctt_violations_detected))
+                htctt_violations_item.setFlags(htctt_violations_item.flags() & ~Qt.ItemIsEditable)
                 row_position = self.table.rowCount()
                 self.table.insertRow(row_position)
                 self.table.setItem(row_position, 0, video_item)
                 self.table.setItem(row_position, 1, wear_violations_item)
                 self.table.setItem(row_position, 2, hbt_violations_item)
                 self.table.setItem(row_position, 3, hor_violations_item)
+                self.table.setItem(row_position, 4, htctt_violations_item)
                 
     def adder_stat(self):
         name_csv_file = 'summary.csv'
@@ -888,7 +910,7 @@ class LogViewer(QWidget):
         try:
             for users_id in user_id:
                 with open(photo_path, 'rb') as photo:
-                    bot.send_message(users_id, f'Обновлена статистика.\n    Нарушения\nWEAR - Нарушение при ношения формы\nHBT - Человек оказался между поездами\n HOR - Человек на рельсах')
+                    bot.send_message(users_id, f'Обновлена статистика.\n    Нарушения\nWEAR - Нарушение при ношения формы\nHBT - Человек оказался между поездами\nHOR - Человек на рельсах\nHTCTT - Человек слишком близко к поезду')
                     #\nHOR - Человек оказался на рельсах - ДОБАВИТЬ
                     bot.send_photo(users_id, photo)
             QMessageBox.information(self, "Отправка отчёта", "Отчёт успешно отправлен через телеграм-бота.")
