@@ -7,6 +7,7 @@ import math
 import cvzone
 import time
 import csv
+import telebot
 from PyQt5.QtCore import Qt, QSize, QUrl
 from PyQt5.QtGui import QImage, QPixmap, QPalette, QBrush, QIcon
 from PyQt5.QtMultimedia import QMediaPlayer, QMediaContent
@@ -15,18 +16,11 @@ from PyQt5.QtWidgets import QProgressDialog, QComboBox, QToolButton, QFormLayout
 import sqlite3
 from ultralytics import YOLO
 import concurrent.futures
-
 from collections import Counter
 import matplotlib.pyplot as plt
 
-
-import telebot
-
 TOKEN = '6470937115:AAGpQLFJe3_zXyfpHaLIlinibs0i60uVX8M'
-
-
-
-selected_model = "04_medium_2757.pt"
+selected_model = "02_medium_2757.pt"
 
 class MenuWidget(QWidget):
     def __init__(self):
@@ -295,24 +289,16 @@ class UserWindow(QWidget):
         file_dialog.setNameFilter("Video files (*.mp4 *.avi)")
         if file_dialog.exec_():
             self.selected_files = file_dialog.selectedFiles()
-            print(self.selected_files)
-            if self.selected_files:
-                for file in self.selected_files:
-                    self.current_video_index = 0
-                    self.process_next_video(file)
+            self.process_next_video(self.selected_files[0])
 
     def process_next_video(self, data):
-        if self.current_video_index < len(self.selected_files):
-            self.video_path = data
-            self.player.setMedia(QMediaContent(QUrl.fromLocalFile(self.video_path)))
-            self.player.play()
-            self.video_widget.setVisible(True)
-            self.confirm_button.setVisible(True)
-            self.delete_button.setVisible(True)
-            self.add_button.setVisible(False)
-            self.back_button.setVisible(False)
-        else:
-            self.reset_ui_after_processing()
+        self.player.setMedia(QMediaContent(QUrl.fromLocalFile(data)))
+        self.player.play()
+        self.video_widget.setVisible(True)
+        self.confirm_button.setVisible(True)
+        self.delete_button.setVisible(True)
+        self.add_button.setVisible(False)
+        self.back_button.setVisible(False)
 
     def reset_ui_after_processing(self):
         self.video_widget.setVisible(False)
@@ -322,31 +308,39 @@ class UserWindow(QWidget):
         self.back_button.setVisible(True)
 
     def confirm_video(self):
-        print(selected_model)
-        self.confirm_button.setVisible(False)
-        self.delete_button.setVisible(False)
-        self.add_button.setVisible(False)
-        self.processing_label.setVisible(True)
-        
-        if hasattr(self, 'video_path'):
-            video_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'videos')
-            os.makedirs(video_dir, exist_ok=True)
-            video_count = len(os.listdir(video_dir))
-            new_file_name = f"vid{video_count + 1}.mp4"
-            destination_path = os.path.join(video_dir, new_file_name)
-            print(destination_path, new_file_name)
-            self.progress_bar.setVisible(True)
-            self.process_and_save_video(self.video_path, destination_path, new_file_name)
-        
-        self.player.setMedia(QMediaContent())
-        self.player.stop()
-        self.processing_label.setVisible(False)
-        self.video_widget.setVisible(False)
-        self.add_button.setVisible(True)
-        self.progress_bar.setVisible(False)
-        self.back_button.setVisible(True)
-        self.add_button.setVisible(True)
-        self.back_button.setVisible(True)
+        total_work = 0
+        for vid in self.selected_files:
+            self.player.setMedia(QMediaContent(QUrl.fromLocalFile(vid)))
+            self.player.play()
+            total_work += 1
+            self.video_path = vid
+            print("VID: ", vid)
+            print(selected_model)
+            self.confirm_button.setVisible(False)
+            self.delete_button.setVisible(False)
+            self.add_button.setVisible(False)
+            self.processing_label.setVisible(True)
+            
+            if hasattr(self, 'video_path'):
+                video_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'videos')
+                os.makedirs(video_dir, exist_ok=True)
+                video_count = len(os.listdir(video_dir))
+                new_file_name = f"vid{video_count + 1}.mp4"
+                destination_path = os.path.join(video_dir, new_file_name)
+                print(destination_path, new_file_name)
+                self.progress_bar.setVisible(True)
+                self.process_and_save_video(self.video_path, destination_path, new_file_name)
+            
+            print("обработано: ", total_work)
+            self.player.setMedia(QMediaContent())
+            self.player.stop()
+            self.processing_label.setVisible(False)
+            self.video_widget.setVisible(False)
+            self.add_button.setVisible(True)
+            self.progress_bar.setVisible(False)
+            self.back_button.setVisible(True)
+            self.add_button.setVisible(True)
+            self.back_button.setVisible(True)
 
     def delete_video(self):
         self.player.setMedia(QMediaContent())
@@ -451,7 +445,7 @@ class UserWindow(QWidget):
         
         frame_rate = 30
         train_speed = calculate_train_speed(trains, frame_rate)
-        self.g.append(f"Train speed: {train_speed} pixels/second")
+        #self.g.append(f"Train speed: {train_speed} pixels/second")
 
         def is_inside(box1, box2):
             return sum(b1 <= b2 for b1, b2 in zip(box1, box2)) >= 2
@@ -579,7 +573,7 @@ class WatcherWindow(QWidget):
         self.violation_label.setStyleSheet("font-size: 16px; color: green;")
         self.violation_label.setAlignment(Qt.AlignCenter)
         self.violation_label.setMaximumSize(1000, 50)
-        self.violation_label.setStyleSheet("background-color: grey; font-size: 20px; color: blue; font-weight: bold;")
+        self.violation_label.setStyleSheet("background-color: grey; font-size: 20px; color: green; font-weight: bold;")
 
         self.scroll_area = QScrollArea()
         self.scroll_area.setWidgetResizable(True)
@@ -611,7 +605,7 @@ class WatcherWindow(QWidget):
 
         self.pause_button = QPushButton('Пауза')
         self.pause_button.setStyleSheet("background-color: #666; color: white; font-size: 16px; padding: 10px; border-radius: 5px;")
-        self.pause_button.clicked.connect(self.build_logs)
+        self.pause_button.clicked.connect(self.toggle_pause)
         self.pause_button.setVisible(False)
 
         layout = QVBoxLayout()
@@ -645,7 +639,7 @@ class WatcherWindow(QWidget):
                     self.violations[frame_number] = warn_name
         else:
             self.violation_label.setText("Всё хорошо")
-            self.violation_label.setStyleSheet("font-size: 16px; color: green;")
+            self.violation_label.setStyleSheet("background-color: grey; font-size: 20px; color: green; font-weight: bold;")
 
     def mark_violation_on_slider(self, frame_number):
         cap = cv2.VideoCapture(self.player.currentMedia().canonicalUrl().toLocalFile())
@@ -887,12 +881,12 @@ class LogViewer(QWidget):
     def send_report(self):
         self.adder_stat()
         photo_path = 'statistics_graph/stat.jpg'
-        user_id = [1010612567]  # 900721585, 464436154
+        user_id = [1010612567, 900721585]  # 900721585, 464436154
         bot = telebot.TeleBot(TOKEN)
         try:
             for users_id in user_id:
                 with open(photo_path, 'rb') as photo:
-                    bot.send_message(users_id, f'Обновлена статистика.\n    Нарушения\nWEAR - Нарушение при ношения формы\nHBT - Человек оказался между поездами')
+                    bot.send_message(users_id, f'Обновлена статистика.\n    Нарушения\nWEAR - Нарушение при ношения формы\nHBT - Человек оказался между поездами\n HOR - Человек на рельсах')
                     #\nHOR - Человек оказался на рельсах - ДОБАВИТЬ
                     bot.send_photo(users_id, photo)
             QMessageBox.information(self, "Отправка отчёта", "Отчёт успешно отправлен через телеграм-бота.")
